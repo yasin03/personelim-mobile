@@ -16,6 +16,7 @@ Bu dosya, Personelim mobil projesini backend yetenekleriyle hizalayacak adımlar
 - **Mesai Onay Süreci:** Owner/manager, çalışanların timesheet kayıtlarını görüntüleyip onaylayabilecek (statü değişimi, not ekleme). Backend onayı destekliyorsa `approved`, `approvedBy` vb. alanlar kullanılacak.
 - **Pasif Personeller:** `fetchDeletedPersonelList` API’sini kullanarak “Arşivlenmiş Personeller” ekranı ekle, restore akışını UI’dan yönet.
 - **Onay Notu:** Timesheet onay/reddetme işlemlerinde `note` alanını backend sözleşmesine uygun şekilde gönder ve UI’da görüntüle.
+- **Manager Yetkilendirme:** Owner panelinden personel detayında kullanıcı rolünü `manager ↔ employee` arasında değiştirecek akışı tamamla; manager navigasyon görünürlüğünü rol bazlı filtrele.
 
 ### 3. Payroll & Maaş Yönetimi
 - Payroll servis fonksiyonlarını ve gerekirse yeni store modülünü ekle.

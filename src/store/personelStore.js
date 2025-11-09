@@ -34,6 +34,7 @@ import {
   getEmployeeTimesheets,
   approveTimesheetEntry,
 } from "../services/employee";
+import { updateUserRole as updateUserRoleApi } from "../services/auth";
 
 const getTimesheetIdentifier = (entry) =>
   entry?.id || entry?._id || entry?.timesheetId || entry?.uuid || entry?.code;
@@ -619,6 +620,90 @@ const usePersonelStore = create((set, get) => ({
       if (result.success) {
         set({ isLoading: false });
         return { success: true, user: result.user };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  updatePersonelRole: async (personelId, userId, role) => {
+    if (!userId) {
+      set({
+        error: "Kullanıcı hesabı bulunamadığı için rol güncellenemiyor.",
+      });
+      return {
+        success: false,
+        error: "Kullanıcı hesabı bulunamadığı için rol güncellenemiyor.",
+      };
+    }
+
+    set({ isLoading: true, error: null });
+    try {
+      const result = await updateUserRoleApi(userId, role);
+
+      if (result.success) {
+        const updatedUser = result.user || { id: userId, role };
+
+        set((state) => ({
+          personelList: state.personelList.map((entry) => {
+            const entryId =
+              entry?.id ||
+              entry?._id ||
+              entry?.employeeId ||
+              entry?.userId ||
+              entry?.uuid;
+            if (entryId !== personelId && entry?.userId !== userId) {
+              return entry;
+            }
+            return {
+              ...entry,
+              role,
+              userRole: role,
+              accountRole: role,
+              user: entry.user
+                ? { ...entry.user, role, id: entry.user.id ?? userId }
+                : updatedUser,
+              userId: entry.userId ?? updatedUser.id ?? userId,
+            };
+          }),
+          currentPersonel: state.currentPersonel
+            ? (() => {
+                const entry = state.currentPersonel;
+                const entryId =
+                  entry?.id ||
+                  entry?._id ||
+                  entry?.employeeId ||
+                  entry?.userId ||
+                  entry?.uuid;
+                if (entryId !== personelId && entry?.userId !== userId) {
+                  return entry;
+                }
+                return {
+                  ...entry,
+                  role,
+                  userRole: role,
+                  accountRole: role,
+                  user: entry.user
+                    ? { ...entry.user, role, id: entry.user.id ?? userId }
+                    : updatedUser,
+                  userId: entry.userId ?? updatedUser.id ?? userId,
+                };
+              })()
+            : state.currentPersonel,
+          isLoading: false,
+        }));
+
+        return { success: true, user: updatedUser };
       } else {
         set({
           error: result.error,

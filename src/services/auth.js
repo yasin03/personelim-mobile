@@ -19,6 +19,18 @@ import {
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL || "https://personelim-be.vercel.app";
 
+const buildAuthHeaders = async () => {
+  const token = await getToken();
+  if (!token) {
+    return null;
+  }
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+};
+
 // Kullanıcı giriş yapma (Backend API kullanarak)
 export const signIn = async (email, password) => {
   try {
@@ -163,17 +175,14 @@ export const getCurrentUser = async () => {
 // Kullanıcı bilgilerini güncelle
 export const updateUserProfile = async (updateData) => {
   try {
-    const token = await getToken();
-    if (!token) {
+    const headers = await buildAuthHeaders();
+    if (!headers) {
       return { success: false, error: "Token bulunamadı" };
     }
 
     const response = await fetch(`${API_BASE_URL}/auth/update`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify(updateData),
     });
 
@@ -194,6 +203,38 @@ export const updateUserProfile = async (updateData) => {
     }
   } catch (error) {
     console.error("Update user error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+export const updateUserRole = async (userId, role) => {
+  try {
+    const headers = await buildAuthHeaders();
+    if (!headers) {
+      return { success: false, error: "Token bulunamadı" };
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/auth/users/${userId}/role`,
+      {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ role }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        user: data.user,
+      };
+    } else {
+      return { success: false, error: data.message || data.error };
+    }
+  } catch (error) {
+    console.error("Update user role error:", error);
     return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
   }
 };

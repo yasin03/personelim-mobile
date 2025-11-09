@@ -11,17 +11,28 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import usePersonelStore from "../store/personelStore";
+import useAuthStore from "../store/authStore";
 
 const PersonelDetailScreen = ({ navigation, route }) => {
   const { personel } = route.params;
-  const { deletePersonel, isLoading } = usePersonelStore();
+  const { deletePersonel, updatePersonelRole, isLoading } = usePersonelStore();
+  const { user: authUser } = useAuthStore();
   const [personelData, setPersonelData] = useState(personel);
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const personelId =
     personelData?.id ||
     personelData?._id ||
     personelData?.employeeId ||
     personelData?.userId;
+  const userId = personelData?.userId || personelData?.user?.id;
+  const accountRole =
+    personelData?.userRole ||
+    personelData?.role ||
+    personelData?.accountRole ||
+    personelData?.user?.role ||
+    "employee";
+  const canManageRoles = authUser?.role === "owner";
 
   useEffect(() => {
     setPersonelData(personel);
@@ -73,6 +84,67 @@ const PersonelDetailScreen = ({ navigation, route }) => {
 
   const handleCreateUser = () => {
     navigation.navigate("CreatePersonelUser", { personel: personelData });
+  };
+
+  const handleRoleChange = (targetRole) => {
+    if (!personelId || !userId) {
+      Alert.alert(
+        "Bilgi",
+        "Önce bu personel için bir kullanıcı hesabı oluşturmanız gerekir."
+      );
+      return;
+    }
+
+    if (accountRole === targetRole) {
+      Alert.alert("Bilgi", `Personel zaten ${targetRole} rolünde.`);
+      return;
+    }
+
+    const roleLabel =
+      targetRole === "manager"
+        ? "Manager"
+        : targetRole === "owner"
+        ? "Owner"
+        : "Employee";
+
+    Alert.alert(
+      "Rol Güncelle",
+      `${personelData.firstName} ${personelData.lastName} adlı personeli ${roleLabel} rolüne geçirmek istediğinize emin misiniz?`,
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Evet",
+          onPress: async () => {
+            setIsUpdatingRole(true);
+            const result = await updatePersonelRole(
+              personelId,
+              userId,
+              targetRole
+            );
+            setIsUpdatingRole(false);
+
+            if (result.success) {
+              setPersonelData((prev) => ({
+                ...prev,
+                role: targetRole,
+                userRole: targetRole,
+                accountRole: targetRole,
+                user: prev?.user
+                  ? { ...prev.user, role: targetRole }
+                  : { id: userId, role: targetRole },
+              }));
+              Alert.alert("Başarılı", `Rol ${roleLabel} olarak güncellendi.`);
+            } else {
+              Alert.alert(
+                "Hata",
+                result.error ||
+                  "Rol güncellenirken bir hata oluştu. Lütfen tekrar deneyin."
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const InfoRow = ({ label, value, icon }) => (
@@ -212,6 +284,45 @@ const PersonelDetailScreen = ({ navigation, route }) => {
                 value={personelData.userId}
                 icon="key-outline"
               />
+              <InfoRow
+                label="Rol"
+                value={
+                  accountRole === "manager"
+                    ? "Manager"
+                    : accountRole === "owner"
+                    ? "Owner"
+                    : "Employee"
+                }
+                icon="ribbon-outline"
+              />
+
+              {canManageRoles && (
+                <View style={styles.roleButtons}>
+                  {accountRole !== "manager" && (
+                    <Button
+                      size="small"
+                      status="success"
+                      style={styles.roleButton}
+                      disabled={isUpdatingRole}
+                      onPress={() => handleRoleChange("manager")}
+                    >
+                      Manager Yap
+                    </Button>
+                  )}
+                  {accountRole !== "employee" && (
+                    <Button
+                      size="small"
+                      appearance="outline"
+                      status="basic"
+                      style={styles.roleButton}
+                      disabled={isUpdatingRole}
+                      onPress={() => handleRoleChange("employee")}
+                    >
+                      Çalışana Çevir
+                    </Button>
+                  )}
+                </View>
+              )}
             </Card>
           ) : (
             <Card style={styles.infoCard}>
@@ -346,6 +457,14 @@ const styles = StyleSheet.create({
   },
   createUserButton: {
     marginTop: 8,
+  },
+  roleButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  roleButton: {
+    flex: 1,
   },
   actionButtons: {
     flexDirection: "row",

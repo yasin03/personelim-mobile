@@ -69,9 +69,9 @@ const deriveDuration = (item) => {
 };
 
 const statusMeta = {
-  approved: { label: "Onaylandı", color: "#4CAF50" },
-  rejected: { label: "Reddedildi", color: "#F44336" },
-  pending: { label: "Bekliyor", color: "#FF9800" },
+  approved: { label: "Onaylandı", color: "#4CAF50", noteLabel: "Onay Notu" },
+  rejected: { label: "Reddedildi", color: "#F44336", noteLabel: "Ret Notu" },
+  pending: { label: "Beklemede", color: "#FF9800", noteLabel: "Not" },
 };
 
 const getTimesheetIdentifier = (entry) =>
@@ -160,7 +160,7 @@ const EmployeeTimesheetsScreen = ({ route }) => {
     const status =
       item.status ||
       item.approvalStatus ||
-      (item.approved ? "approved" : "pending");
+      (item.approved ? "approved" : item.rejected ? "rejected" : "pending");
     const meta = statusMeta[status] || statusMeta.pending;
 
     return (
@@ -220,7 +220,7 @@ const EmployeeTimesheetsScreen = ({ route }) => {
         {item.approvalNote ? (
           <View style={styles.notesContainer}>
             <Text category="s2" style={styles.detailLabel}>
-              Onay Notu:
+              {meta.noteLabel}:
             </Text>
             <Text category="p2">{item.approvalNote}</Text>
           </View>
@@ -237,27 +237,28 @@ const EmployeeTimesheetsScreen = ({ route }) => {
         ) : null}
 
         <View style={styles.actionRow}>
-          {status === "pending" ? (
-            <>
-              <Button
-                size="small"
-                status="success"
-                style={styles.actionButton}
-                onPress={() => openApprovalModal(item, "approved")}
-              >
-                Onayla
-              </Button>
-              <Button
-                size="small"
-                status="danger"
-                appearance="outline"
-                style={styles.actionButton}
-                onPress={() => openApprovalModal(item, "rejected")}
-              >
-                Reddet
-              </Button>
-            </>
-          ) : (
+          {status !== "approved" && (
+            <Button
+              size="small"
+              status="success"
+              style={styles.actionButton}
+              onPress={() => openApprovalModal(item, "approved")}
+            >
+              Onayla
+            </Button>
+          )}
+          {status !== "rejected" && (
+            <Button
+              size="small"
+              status="danger"
+              appearance="outline"
+              style={styles.actionButton}
+              onPress={() => openApprovalModal(item, "rejected")}
+            >
+              Reddet
+            </Button>
+          )}
+          {status !== "pending" && (
             <Button
               size="small"
               status="basic"

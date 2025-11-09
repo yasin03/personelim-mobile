@@ -398,14 +398,22 @@ export const approveTimesheetEntry = async (
       payload.note = note.trim();
     }
 
-    const response = await fetch(
-      `${API_BASE_URL}/employees/${employeeId}/timesheets/${timesheetId}/approve`,
-      {
+    const makeRequest = async (url) =>
+      fetch(url, {
         method: "PATCH",
         headers,
         body: JSON.stringify(payload),
-      }
+      });
+
+    let response = await makeRequest(
+      `${API_BASE_URL}/employees/${employeeId}/timesheets/${timesheetId}/approve`
     );
+
+    if (response.status === 404) {
+      response = await makeRequest(
+        `${API_BASE_URL}/employees/${employeeId}/timesheets/${timesheetId}`
+      );
+    }
 
     const data = await response.json();
 
