@@ -12,7 +12,7 @@ import {
   Avatar,
 } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, CommonActions } from "@react-navigation/native";
 import usePersonelStore from "../store/personelStore";
 
 const avatarColors = [
@@ -55,11 +55,23 @@ const PersonelListScreen = ({ navigation }) => {
     fetchPersonelList();
   }, [fetchPersonelList]);
 
-  // Sayfa her açıldığında listeyi yenile
+  // Sayfa her açıldığında listeyi yenile ve stack'i kontrol et
   useFocusEffect(
     React.useCallback(() => {
       fetchPersonelList();
-    }, [fetchPersonelList])
+      
+      // Eğer stack'te başka ekranlar varsa, PersonelList'e dön
+      const state = navigation.getState();
+      if (state && state.index > 0) {
+        // Stack'i PersonelList'e reset et
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "PersonelList" }],
+          })
+        );
+      }
+    }, [fetchPersonelList, navigation])
   );
 
   const handleRefresh = () => {

@@ -25,6 +25,7 @@ import {
   deleteAdvanceRequest,
   getEmployeeLeaves,
   approveLeaveRequest,
+  reviseLeaveRequest,
   getEmployeeAdvances,
   approveAdvanceRequest,
   getMyTimesheets,
@@ -33,6 +34,10 @@ import {
   deleteTimesheetEntry,
   getEmployeeTimesheets,
   approveTimesheetEntry,
+  getAllPendingLeaves,
+  getAllApprovedLeaves,
+  getAllRejectedLeaves,
+  getAllLeaves,
 } from "../services/employee";
 import { updateUserRole as updateUserRoleApi } from "../services/auth";
 
@@ -186,6 +191,18 @@ const usePersonelStore = create((set, get) => ({
   myAdvances: [],
   myTimesheets: [],
   employeeTimesheets: [],
+  pendingLeaves: [],
+  pendingLeavesPagination: {
+    page: 1,
+    limit: 50,
+    total: 0,
+  },
+  allLeaves: [],
+  allLeavesPagination: {
+    page: 1,
+    limit: 50,
+    total: 0,
+  },
   isLoading: false,
   error: null,
   pagination: {
@@ -748,11 +765,19 @@ const usePersonelStore = create((set, get) => ({
     limit = 10,
     status = null,
     type = null,
-    approved = null
+    approved = null,
+    includeExpired = false
   ) => {
     set({ isLoading: true, error: null });
     try {
-      const result = await getMyLeaves(page, limit, status, type, approved);
+      const result = await getMyLeaves(
+        page,
+        limit,
+        status,
+        type,
+        approved,
+        includeExpired
+      );
 
       if (result.success) {
         set({
@@ -1353,7 +1378,8 @@ const usePersonelStore = create((set, get) => ({
     limit = 10,
     status = null,
     type = null,
-    approved = null
+    approved = null,
+    includeExpired = false
   ) => {
     set({ isLoading: true, error: null });
     try {
@@ -1363,7 +1389,8 @@ const usePersonelStore = create((set, get) => ({
         limit,
         status,
         type,
-        approved
+        approved,
+        includeExpired
       );
 
       if (result.success) {
@@ -1385,18 +1412,190 @@ const usePersonelStore = create((set, get) => ({
     }
   },
 
-  approveLeave: async (employeeId, leaveId, status, approvalNote = null) => {
+  approveLeave: async (employeeId, leaveId, status, note = null) => {
     set({ isLoading: true, error: null });
     try {
       const result = await approveLeaveRequest(
         employeeId,
         leaveId,
         status,
-        approvalNote
+        note
       );
 
       if (result.success) {
         set({ isLoading: false });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  reviseLeave: async (employeeId, leaveId, reviseData = {}) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await reviseLeaveRequest(employeeId, leaveId, reviseData);
+
+      if (result.success) {
+        set({ isLoading: false });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  fetchPendingLeaves: async (page = 1, limit = 50, includeExpired = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await getAllPendingLeaves(page, limit, includeExpired);
+
+      if (result.success) {
+        set({
+          pendingLeaves: result.data.leaves || [],
+          pendingLeavesPagination: {
+            page: result.data.page || page,
+            limit: result.data.limit || limit,
+            total: result.data.total || 0,
+            totalPages: result.data.totalPages || 1,
+          },
+          isLoading: false,
+        });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  fetchAllApprovedLeaves: async (page = 1, limit = 50, includeExpired = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await getAllApprovedLeaves(page, limit, includeExpired);
+
+      if (result.success) {
+        set({
+          allLeaves: result.data.leaves || [],
+          allLeavesPagination: {
+            page: result.data.page || page,
+            limit: result.data.limit || limit,
+            total: result.data.total || 0,
+            totalPages: result.data.totalPages || 1,
+          },
+          isLoading: false,
+        });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  fetchAllRejectedLeaves: async (page = 1, limit = 50, includeExpired = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await getAllRejectedLeaves(page, limit, includeExpired);
+
+      if (result.success) {
+        set({
+          allLeaves: result.data.leaves || [],
+          allLeavesPagination: {
+            page: result.data.page || page,
+            limit: result.data.limit || limit,
+            total: result.data.total || 0,
+            totalPages: result.data.totalPages || 1,
+          },
+          isLoading: false,
+        });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          error: result.error,
+          isLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  fetchAllLeaves: async (
+    page = 1,
+    limit = 50,
+    status = null,
+    type = null,
+    includeExpired = false,
+    startDate = null,
+    endDate = null
+  ) => {
+    set({ isLoading: true, error: null });
+    try {
+      const result = await getAllLeaves(
+        page,
+        limit,
+        status,
+        type,
+        includeExpired,
+        startDate,
+        endDate
+      );
+
+      if (result.success) {
+        set({
+          allLeaves: result.data.leaves || [],
+          allLeavesPagination: {
+            page: result.data.page || page,
+            limit: result.data.limit || limit,
+            total: result.data.total || 0,
+            totalPages: result.data.totalPages || 1,
+          },
+          isLoading: false,
+        });
         return { success: true, data: result.data };
       } else {
         set({

@@ -1,5 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@ui-kitten/components";
 
@@ -56,7 +57,7 @@ const MainTabNavigator = () => {
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
-            // Varsayılan davranışı iptal etmeyelim ancak her tab basışında listeye dönelim
+            // Her tab basışında PersonelList'e git
             navigation.navigate("Personel", {
               screen: "PersonelList",
             });

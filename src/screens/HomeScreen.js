@@ -1,17 +1,24 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View, ScrollView } from "react-native";
+import { StyleSheet, View, ScrollView, TouchableOpacity } from "react-native";
 import { Layout, Text, Button, Card } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import useAuthStore from "../store/authStore";
 import usePersonelStore from "../store/personelStore";
 
 const HomeScreen = ({ navigation }) => {
   const { user, business } = useAuthStore();
-  const { statistics, fetchStatistics, isLoading } = usePersonelStore();
+  const {
+    statistics,
+    fetchStatistics,
+    isLoading,
+  } = usePersonelStore();
 
   useEffect(() => {
     fetchStatistics();
   }, []);
+
 
   const quickActions = [
     {
@@ -26,6 +33,19 @@ const HomeScreen = ({ navigation }) => {
       action: () => navigation.navigate("Personel"),
       color: "#2196F3",
     },
+    ...(user?.role === "owner" || user?.role === "manager"
+      ? [
+          {
+            title: "Tüm İzinler",
+            subtitle: "Tüm izin kayıtları",
+            action: () =>
+              navigation.navigate("Personel", {
+                screen: "AllLeaves",
+              }),
+            color: "#2196F3",
+          },
+        ]
+      : []),
     {
       title: "Raporlar",
       subtitle: "İstatistikler ve analizler",
@@ -120,16 +140,21 @@ const HomeScreen = ({ navigation }) => {
             ))}
           </View>
 
-          {/* Recent Activity - Placeholder */}
-          <Text category="h6" style={styles.sectionTitle}>
-            Son Aktiviteler
-          </Text>
 
-          <Card style={styles.activityCard}>
-            <Text category="s1" style={styles.emptyText}>
-              Son aktiviteler burada görünecek
-            </Text>
-          </Card>
+          {/* Recent Activity - Placeholder */}
+          {!(user?.role === "owner" || user?.role === "manager") && (
+            <>
+              <Text category="h6" style={styles.sectionTitle}>
+                Son Aktiviteler
+              </Text>
+
+              <Card style={styles.activityCard}>
+                <Text category="s1" style={styles.emptyText}>
+                  Son aktiviteler burada görünecek
+                </Text>
+              </Card>
+            </>
+          )}
         </ScrollView>
       </Layout>
     </SafeAreaView>
@@ -202,6 +227,9 @@ const styles = StyleSheet.create({
   emptyText: {
     opacity: 0.7,
     textAlign: "center",
+  },
+  emptyIcon: {
+    marginBottom: 8,
   },
 });
 

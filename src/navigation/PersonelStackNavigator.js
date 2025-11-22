@@ -7,6 +7,8 @@ import AddPersonelScreen from "../screens/AddPersonelScreen";
 import PersonelDetailScreen from "../screens/PersonelDetailScreen";
 import ArchivedPersonelScreen from "../screens/ArchivedPersonelScreen";
 import EmployeeTimesheetsScreen from "../screens/EmployeeTimesheetsScreen";
+import EmployeeLeavesScreen from "../screens/EmployeeLeavesScreen";
+import AllLeavesScreen from "../screens/AllLeavesScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +26,14 @@ const PersonelStackNavigator = () => {
       <Stack.Screen
         name="EmployeeTimesheets"
         component={EmployeeTimesheetsScreen}
+      />
+      <Stack.Screen
+        name="EmployeeLeaves"
+        component={EmployeeLeavesScreen}
+      />
+      <Stack.Screen
+        name="AllLeaves"
+        component={AllLeavesScreen}
       />
     </Stack.Navigator>
   );

@@ -692,18 +692,22 @@ export const getMyLeaves = async (
   limit = 10,
   status = null,
   type = null,
-  approved = null
+  approved = null,
+  includeExpired = false
 ) => {
   try {
     const headers = await getAuthHeaders();
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     let url = `${API_BASE_URL}/employees/${employeeId}/leaves?page=${page}&limit=${limit}`;
 
     if (status) {
@@ -714,6 +718,9 @@ export const getMyLeaves = async (
     }
     if (approved !== null) {
       url += `&approved=${approved}`;
+    }
+    if (includeExpired) {
+      url += `&includeExpired=true`;
     }
 
     const response = await fetch(url, {
@@ -744,11 +751,14 @@ export const getMyLeaveStatistics = async (year = null) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     let url = `${API_BASE_URL}/employees/${employeeId}/leaves/statistics`;
 
     if (year) {
@@ -783,11 +793,14 @@ export const createLeaveRequest = async (leaveData) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/leaves`,
       {
@@ -820,11 +833,14 @@ export const getLeaveById = async (leaveId) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/leaves/${leaveId}`,
       {
@@ -856,11 +872,14 @@ export const updateLeaveRequest = async (leaveId, leaveData) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/leaves/${leaveId}`,
       {
@@ -893,11 +912,14 @@ export const deleteLeaveRequest = async (leaveId) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/leaves/${leaveId}`,
       {
@@ -929,7 +951,8 @@ export const getEmployeeLeaves = async (
   limit = 10,
   status = null,
   type = null,
-  approved = null
+  approved = null,
+  includeExpired = false
 ) => {
   try {
     const headers = await getAuthHeaders();
@@ -943,6 +966,9 @@ export const getEmployeeLeaves = async (
     }
     if (approved !== null) {
       url += `&approved=${approved}`;
+    }
+    if (includeExpired) {
+      url += `&includeExpired=true`;
     }
 
     const response = await fetch(url, {
@@ -971,19 +997,24 @@ export const approveLeaveRequest = async (
   employeeId,
   leaveId,
   status,
-  approvalNote = null
+  note = null
 ) => {
   try {
     const headers = await getAuthHeaders();
+    const payload = {
+      status,
+    };
+
+    if (note && note.trim() !== "") {
+      payload.note = note.trim();
+    }
+
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/leaves/${leaveId}/approve`,
       {
         method: "PATCH",
         headers,
-        body: JSON.stringify({
-          status,
-          approvalNote,
-        }),
+        body: JSON.stringify(payload),
       }
     );
 
@@ -992,13 +1023,67 @@ export const approveLeaveRequest = async (
     if (response.ok) {
       return {
         success: true,
-        data: data.data,
+        data: data.data ?? data,
       };
     } else {
       return { success: false, error: data.message || data.error };
     }
   } catch (error) {
     console.error("Approve leave request error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: İzin revize ve onaylama
+export const reviseLeaveRequest = async (
+  employeeId,
+  leaveId,
+  reviseData = {}
+) => {
+  try {
+    const headers = await getAuthHeaders();
+    const payload = {};
+
+    if (reviseData.type !== undefined) {
+      payload.type = reviseData.type;
+    }
+    if (reviseData.startDate !== undefined) {
+      payload.startDate = reviseData.startDate;
+    }
+    if (reviseData.endDate !== undefined) {
+      payload.endDate = reviseData.endDate;
+    }
+    if (reviseData.reason !== undefined) {
+      payload.reason = reviseData.reason;
+    }
+    if (reviseData.status !== undefined) {
+      payload.status = reviseData.status;
+    }
+    if (reviseData.note !== undefined && reviseData.note?.trim() !== "") {
+      payload.note = reviseData.note.trim();
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/employees/${employeeId}/leaves/${leaveId}/revise`,
+      {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        data: data.data ?? data,
+      };
+    } else {
+      return { success: false, error: data.message || data.error };
+    }
+  } catch (error) {
+    console.error("Revise leave request error:", error);
     return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
   }
 };
@@ -1010,11 +1095,14 @@ export const getMyAdvances = async (page = 1, limit = 10, status = null) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     let url = `${API_BASE_URL}/employees/${employeeId}/advances?page=${page}&limit=${limit}`;
 
     if (status) {
@@ -1049,11 +1137,14 @@ export const getMyAdvanceStatistics = async (year = null) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     let url = `${API_BASE_URL}/employees/${employeeId}/advances/statistics`;
 
     if (year) {
@@ -1088,11 +1179,14 @@ export const createAdvanceRequest = async (advanceData) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/advances`,
       {
@@ -1125,11 +1219,14 @@ export const getAdvanceById = async (advanceId) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/advances/${advanceId}`,
       {
@@ -1161,11 +1258,14 @@ export const updateAdvanceRequest = async (advanceId, advanceData) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/advances/${advanceId}`,
       {
@@ -1198,11 +1298,14 @@ export const deleteAdvanceRequest = async (advanceId) => {
 
     // Önce kendi bilgilerini al
     const userResponse = await getCurrentEmployeeData();
-    if (!userResponse.success || !userResponse.data?.id) {
+    if (!userResponse.success || !userResponse.employee) {
       return { success: false, error: "Kullanıcı bilgileri alınamadı" };
     }
 
-    const employeeId = userResponse.data.id;
+    const employeeId = extractEmployeeId(userResponse);
+    if (!employeeId) {
+      return { success: false, error: "Kullanıcı bilgileri alınamadı" };
+    }
     const response = await fetch(
       `${API_BASE_URL}/employees/${employeeId}/advances/${advanceId}`,
       {
@@ -1296,6 +1399,343 @@ export const approveAdvanceRequest = async (
     }
   } catch (error) {
     console.error("Approve advance request error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: Tüm bekleyen izin taleplerini getir
+export const getAllPendingLeaves = async (page = 1, limit = 50, includeExpired = false) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    // Yeni backend endpoint: GET /employees/:employeeId/leaves/pending
+    // employeeId parametresi route'da var ama kullanılmıyor, "any" kullanabiliriz
+    let url = `${API_BASE_URL}/employees/any/leaves/pending?page=${page}&limit=${limit}`;
+    
+    if (includeExpired) {
+      url += `&includeExpired=true`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      const leaves = payload.leaves || payload.items || payload.data || [];
+      
+      // Employee bilgileri zaten response'da populate edilmiş olmalı
+      const leavesWithEmployee = Array.isArray(leaves)
+        ? leaves.map((leave) => {
+            const employee = leave.employee || {};
+            const employeeName =
+              leave.employeeName ||
+              employee.name ||
+              `${employee.firstName || ""} ${employee.lastName || ""}`.trim() ||
+              employee.email ||
+              "Bilinmeyen";
+            
+            return {
+              ...leave,
+              employeeId: leave.employeeId || employee.id || employee._id,
+              employeeName,
+              employee: employee,
+            };
+          })
+        : [];
+
+      return {
+        success: true,
+        data: {
+          leaves: leavesWithEmployee,
+          total: payload.total || payload.count || leavesWithEmployee.length || 0,
+          page: payload.page || page,
+          limit: payload.limit || limit,
+          totalPages: payload.totalPages || Math.ceil((payload.total || 0) / (payload.limit || limit)),
+        },
+      };
+    } else {
+      return { success: false, error: data.message || data.error || "İzinler alınamadı" };
+    }
+  } catch (error) {
+    console.error("Get all pending leaves error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: Tüm onaylanan izin taleplerini getir
+export const getAllApprovedLeaves = async (page = 1, limit = 50, includeExpired = false) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    // Yeni backend endpoint: GET /employees/:employeeId/leaves/all?status=approved
+    let url = `${API_BASE_URL}/employees/any/leaves/all?page=${page}&limit=${limit}&status=approved`;
+    
+    if (includeExpired) {
+      url += `&includeExpired=true`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      const leaves = payload.leaves || payload.items || payload.data || [];
+      
+      // Employee bilgileri zaten response'da populate edilmiş olmalı
+      const leavesWithEmployee = Array.isArray(leaves)
+        ? leaves.map((leave) => {
+            const employee = leave.employee || {};
+            const employeeName =
+              leave.employeeName ||
+              employee.name ||
+              `${employee.firstName || ""} ${employee.lastName || ""}`.trim() ||
+              employee.email ||
+              "Bilinmeyen";
+            
+            return {
+              ...leave,
+              employeeId: leave.employeeId || employee.id || employee._id,
+              employeeName,
+              employee: employee,
+            };
+          })
+        : [];
+
+      return {
+        success: true,
+        data: {
+          leaves: leavesWithEmployee,
+          total: payload.total || payload.count || leavesWithEmployee.length || 0,
+          page: payload.page || page,
+          limit: payload.limit || limit,
+          totalPages: payload.totalPages || Math.ceil((payload.total || 0) / (payload.limit || limit)),
+        },
+      };
+    } else {
+      return { success: false, error: data.message || data.error || "İzinler alınamadı" };
+    }
+  } catch (error) {
+    console.error("Get all approved leaves error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: Tüm reddedilmiş izin taleplerini getir
+export const getAllRejectedLeaves = async (page = 1, limit = 50, includeExpired = false) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    // Yeni backend endpoint: GET /employees/:employeeId/leaves/all?status=rejected
+    let url = `${API_BASE_URL}/employees/any/leaves/all?page=${page}&limit=${limit}&status=rejected`;
+    
+    if (includeExpired) {
+      url += `&includeExpired=true`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      const leaves = payload.leaves || payload.items || payload.data || [];
+      
+      // Employee bilgileri zaten response'da populate edilmiş olmalı
+      const leavesWithEmployee = Array.isArray(leaves)
+        ? leaves.map((leave) => {
+            const employee = leave.employee || {};
+            const employeeName =
+              leave.employeeName ||
+              employee.name ||
+              `${employee.firstName || ""} ${employee.lastName || ""}`.trim() ||
+              employee.email ||
+              "Bilinmeyen";
+            
+            return {
+              ...leave,
+              employeeId: leave.employeeId || employee.id || employee._id,
+              employeeName,
+              employee: employee,
+            };
+          })
+        : [];
+
+      return {
+        success: true,
+        data: {
+          leaves: leavesWithEmployee,
+          total: payload.total || payload.count || leavesWithEmployee.length || 0,
+          page: payload.page || page,
+          limit: payload.limit || limit,
+          totalPages: payload.totalPages || Math.ceil((payload.total || 0) / (payload.limit || limit)),
+        },
+      };
+    } else {
+      return { success: false, error: data.message || data.error || "İzinler alınamadı" };
+    }
+  } catch (error) {
+    console.error("Get all rejected leaves error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: Status'a göre tüm izinleri getir (fallback fonksiyon)
+const getAllLeavesByStatus = async (status, page = 1, limit = 50, includeExpired = false) => {
+  try {
+    const headers = await getAuthHeaders();
+    let url = `${API_BASE_URL}/employees/any/leaves?page=${page}&limit=${limit}&status=${encodeURIComponent(status)}`;
+    
+    if (includeExpired) {
+      url += `&includeExpired=true`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      const leaves = payload.leaves || payload.items || payload.data || [];
+      
+      // Employee bilgilerini leave objesine ekle
+      const leavesWithEmployee = Array.isArray(leaves)
+        ? leaves.map((leave) => {
+            const employee = leave.employee || {};
+            const employeeName = employee.name || 
+              `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || 
+              employee.email || 
+              "Bilinmeyen";
+            
+            return {
+              ...leave,
+              employeeId: leave.employeeId || employee.id || employee._id,
+              employeeName,
+              employee: employee,
+            };
+          })
+        : [];
+
+      return {
+        success: true,
+        data: {
+          leaves: leavesWithEmployee,
+          total: payload.total || payload.count || leavesWithEmployee.length || 0,
+          page: payload.page || page,
+          limit: payload.limit || limit,
+          totalPages: payload.totalPages || Math.ceil((payload.total || 0) / (payload.limit || limit)),
+        },
+      };
+    } else {
+      return { success: false, error: data.message || data.error };
+    }
+  } catch (error) {
+    console.error("Get all leaves by status error:", error);
+    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Manager/Owner: Tüm izinleri getir (filtreleme ile)
+export const getAllLeaves = async (
+  page = 1,
+  limit = 50,
+  status = null,
+  type = null,
+  includeExpired = false,
+  startDate = null,
+  endDate = null
+) => {
+  try {
+    const headers = await getAuthHeaders();
+    
+    // Yeni backend endpoint: GET /employees/:employeeId/leaves/all
+    let url = `${API_BASE_URL}/employees/any/leaves/all?page=${page}&limit=${limit}`;
+    
+    if (status) {
+      url += `&status=${encodeURIComponent(status)}`;
+    }
+    if (type) {
+      url += `&type=${encodeURIComponent(type)}`;
+    }
+    if (includeExpired) {
+      url += `&includeExpired=true`;
+    }
+    // Not: Backend dokümantasyonunda startDate ve endDate parametreleri yok
+    // Eğer backend'de varsa eklenebilir, yoksa frontend'de filtreleme yapılabilir
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      let leaves = payload.leaves || payload.items || payload.data || [];
+      
+      // Tarih filtresi (eğer verilmişse ve backend'de yoksa frontend'de yap)
+      if (startDate || endDate) {
+        leaves = leaves.filter((leave) => {
+          const leaveStartDate = leave.startDate ? new Date(leave.startDate) : null;
+          if (startDate && leaveStartDate && leaveStartDate < new Date(startDate)) {
+            return false;
+          }
+          if (endDate && leaveStartDate && leaveStartDate > new Date(endDate)) {
+            return false;
+          }
+          return true;
+        });
+      }
+      
+      // Employee bilgileri zaten response'da populate edilmiş olmalı
+      const leavesWithEmployee = Array.isArray(leaves)
+        ? leaves.map((leave) => {
+            const employee = leave.employee || {};
+            const employeeName =
+              leave.employeeName ||
+              employee.name ||
+              `${employee.firstName || ""} ${employee.lastName || ""}`.trim() ||
+              employee.email ||
+              "Bilinmeyen";
+            
+            return {
+              ...leave,
+              employeeId: leave.employeeId || employee.id || employee._id,
+              employeeName,
+              employee: employee,
+            };
+          })
+        : [];
+
+      return {
+        success: true,
+        data: {
+          leaves: leavesWithEmployee,
+          total: payload.total || payload.count || leavesWithEmployee.length || 0,
+          page: payload.page || page,
+          limit: payload.limit || limit,
+          totalPages: payload.totalPages || Math.ceil((payload.total || 0) / (payload.limit || limit)),
+        },
+      };
+    } else {
+      return { success: false, error: data.message || data.error || "İzinler alınamadı" };
+    }
+  } catch (error) {
+    console.error("Get all leaves error:", error);
     return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
   }
 };

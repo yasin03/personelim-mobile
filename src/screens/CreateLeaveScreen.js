@@ -104,10 +104,6 @@ const CreateLeaveScreen = ({ navigation }) => {
     }
   };
 
-  const handleTypeSelect = (index) => {
-    const selected = leaveTypes[index];
-    setSelectedType(selected);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -129,17 +125,36 @@ const CreateLeaveScreen = ({ navigation }) => {
               <Controller
                 control={control}
                 name="type"
-                render={({ field: { onChange, value } }) => (
-                  <Select
-                    value={selectedType?.title || "İzin türü seçiniz"}
-                    onSelect={handleTypeSelect}
-                    status={errors.type ? "danger" : "basic"}
-                  >
-                    {leaveTypes.map((type, index) => (
-                      <SelectItem key={type.id} title={type.title} />
-                    ))}
-                  </Select>
-                )}
+                render={({ field: { onChange, value } }) => {
+                  const handleSelect = (index) => {
+                    let selectedIndex;
+                    if (typeof index === "number") {
+                      selectedIndex = index;
+                    } else if (index && typeof index.row === "number") {
+                      selectedIndex = index.row;
+                    } else {
+                      return;
+                    }
+                    
+                    if (selectedIndex >= 0 && selectedIndex < leaveTypes.length) {
+                      const selected = leaveTypes[selectedIndex];
+                      setSelectedType(selected);
+                      onChange(selected.id);
+                    }
+                  };
+                  
+                  return (
+                    <Select
+                      value={selectedType?.title || "İzin türü seçiniz"}
+                      onSelect={handleSelect}
+                      status={errors.type ? "danger" : "basic"}
+                    >
+                      {leaveTypes.map((type, index) => (
+                        <SelectItem key={type.id} title={type.title} />
+                      ))}
+                    </Select>
+                  );
+                }}
               />
               {errors.type && (
                 <Text style={styles.errorText}>{errors.type.message}</Text>
