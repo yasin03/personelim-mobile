@@ -26,7 +26,7 @@ const avatarColors = [
 ];
 
 const PersonelListScreen = ({ navigation }) => {
-  const { personelList, isLoading, fetchPersonelList } = usePersonelStore();
+  const { personelList, isLoading, fetchPersonelList, setCurrentPageName } = usePersonelStore();
   const [searchText, setSearchText] = useState("");
 
   // Arama filtresi - personel ismi, pozisyon ve departmana göre
@@ -55,23 +55,12 @@ const PersonelListScreen = ({ navigation }) => {
     fetchPersonelList();
   }, [fetchPersonelList]);
 
-  // Sayfa her açıldığında listeyi yenile ve stack'i kontrol et
+  // Sayfa her açıldığında listeyi yenile
   useFocusEffect(
     React.useCallback(() => {
+      setCurrentPageName("PersonelList");
       fetchPersonelList();
-      
-      // Eğer stack'te başka ekranlar varsa, PersonelList'e dön
-      const state = navigation.getState();
-      if (state && state.index > 0) {
-        // Stack'i PersonelList'e reset et
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: "PersonelList" }],
-          })
-        );
-      }
-    }, [fetchPersonelList, navigation])
+    }, [fetchPersonelList, setCurrentPageName])
   );
 
   const handleRefresh = () => {

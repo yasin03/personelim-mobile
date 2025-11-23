@@ -57,10 +57,32 @@ const MainTabNavigator = () => {
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
-            // Her tab basışında PersonelList'e git
-            navigation.navigate("Personel", {
-              screen: "PersonelList",
-            });
+            // Her tab basışında PersonelList'e git ve stack'i sıfırla
+            const state = navigation.getState();
+            const personelTabState = state.routes.find(r => r.name === "Personel")?.state;
+            
+            // Eğer stack'te başka ekranlar varsa, stack'i PersonelList'e reset et
+            if (personelTabState && personelTabState.index > 0) {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: "Personel",
+                      state: {
+                        routes: [{ name: "PersonelList" }],
+                        index: 0,
+                      },
+                    },
+                  ],
+                })
+              );
+            } else {
+              // Stack zaten PersonelList'te, sadece navigate et
+              navigation.navigate("Personel", {
+                screen: "PersonelList",
+              });
+            }
           },
         })}
       />

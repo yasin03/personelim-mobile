@@ -66,6 +66,7 @@ const EmployeeLeavesScreen = ({ route }) => {
     approveLeave,
     reviseLeave,
     isLoading,
+    setCurrentPageName,
   } = usePersonelStore();
 
   const [leaves, setLeaves] = useState([]);
@@ -108,8 +109,9 @@ const EmployeeLeavesScreen = ({ route }) => {
 
   useFocusEffect(
     useCallback(() => {
+      setCurrentPageName("EmployeeLeaves");
       loadLeaves();
-    }, [loadLeaves])
+    }, [loadLeaves, setCurrentPageName])
   );
 
   useEffect(() => {

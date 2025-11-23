@@ -80,7 +80,7 @@ const getStatusColor = (status) => {
 const getLeaveIdentifier = (entry) =>
   entry.id || entry._id || entry.leaveId || entry.uuid || entry.code;
 
-const AllLeavesScreen = ({ navigation }) => {
+const AllLeavesScreen = ({ navigation, route }) => {
   const { user } = useAuthStore();
   const {
     allLeaves,
@@ -92,9 +92,12 @@ const AllLeavesScreen = ({ navigation }) => {
     reviseLeave,
     allLeavesPagination,
     isLoading,
+    setCurrentPageName,
   } = usePersonelStore();
 
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  // Route parametresinden initialStatus al (varsa)
+  const initialStatus = route?.params?.initialStatus || "all";
+  const [selectedStatus, setSelectedStatus] = useState(initialStatus);
   const [selectedType, setSelectedType] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState(null);
@@ -154,10 +157,15 @@ const AllLeavesScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
+      setCurrentPageName("AllLeaves");
+      // Route parametresinden initialStatus varsa, onu kullan
+      if (route?.params?.initialStatus) {
+        setSelectedStatus(route.params.initialStatus);
+      }
       setTimeout(() => {
         loadLeaves();
       }, 0);
-    }, [loadLeaves])
+    }, [loadLeaves, route?.params?.initialStatus, setCurrentPageName])
   );
 
   useEffect(() => {

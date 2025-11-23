@@ -38,6 +38,7 @@ import {
   getAllApprovedLeaves,
   getAllRejectedLeaves,
   getAllLeaves,
+  getPendingRequests,
 } from "../services/employee";
 import { updateUserRole as updateUserRoleApi } from "../services/auth";
 
@@ -203,6 +204,13 @@ const usePersonelStore = create((set, get) => ({
     limit: 50,
     total: 0,
   },
+  pendingRequests: null,
+  pendingRequestsLoading: false,
+  pendingRequestsError: null,
+  pendingRequestsResponse: null, // Debug için
+  statisticsResponse: null, // Debug için
+  currentPageResponses: {}, // Her sayfa için response'lar { pageName: [responses] }
+  currentPageName: null, // Mevcut sayfa adı (debug için)
   isLoading: false,
   error: null,
   pagination: {
@@ -237,6 +245,22 @@ const usePersonelStore = create((set, get) => ({
   setTimesheetPagination: (timesheetPagination) =>
     set({ timesheetPagination }),
 
+  // Debug için: Mevcut sayfa adını set et
+  setCurrentPageName: (pageName) => set({ currentPageName: pageName }),
+
+  // Debug için: Sayfa response'larını kaydet
+  addPageResponse: (pageName, response) => {
+    const current = get().currentPageResponses;
+    const pageResponses = current[pageName] || [];
+    set({
+      currentPageResponses: {
+        ...current,
+        [pageName]: [...pageResponses.slice(-9), { ...response, timestamp: new Date().toISOString() }], // Son 10 response'u tut
+      },
+      currentPageName: pageName, // Mevcut sayfa adını da güncelle
+    });
+  },
+
   refreshStatistics: async () => {
     try {
       const result = await getEmployeeStatistics();
@@ -261,6 +285,9 @@ const usePersonelStore = create((set, get) => ({
     try {
       const result = await getAllEmployees(page, limit, department, search);
       console.log("PersonelStore - getAllEmployees result:", result);
+
+      // Debug için response'u kaydet
+      get().addPageResponse("PersonelListScreen", { ...result, endpoint: "/employees" });
 
       if (result.success) {
         const payload = result.data ?? {};
@@ -323,6 +350,9 @@ const usePersonelStore = create((set, get) => ({
     try {
       const result = await getEmployeeStatistics();
 
+      // Debug için response'u kaydet
+      set({ statisticsResponse: result });
+
       if (result.success) {
         set({
           statistics: result.statistics,
@@ -340,6 +370,7 @@ const usePersonelStore = create((set, get) => ({
       set({
         error: error.message,
         isLoading: false,
+        statisticsResponse: { error: error.message, timestamp: new Date().toISOString() },
       });
       return { success: false, error: error.message };
     }
@@ -779,6 +810,9 @@ const usePersonelStore = create((set, get) => ({
         includeExpired
       );
 
+      // Debug için response'u kaydet
+      get().addPageResponse("MyLeavesScreen", { ...result, endpoint: "/employees/me/leaves" });
+
       if (result.success) {
         set({
           myLeaves: result.data.leaves || [],
@@ -1115,6 +1149,9 @@ const usePersonelStore = create((set, get) => ({
     try {
       const result = await getEmployeeTimesheets(employeeId, page, limit, status);
 
+      // Debug için response'u kaydet
+      get().addPageResponse("EmployeeTimesheetsScreen", { ...result, endpoint: `/employees/${employeeId}/timesheets` });
+
       if (result.success) {
         const payload = result.data ?? {};
         const rawTimesheets = Array.isArray(payload.timesheets)
@@ -1393,6 +1430,9 @@ const usePersonelStore = create((set, get) => ({
         includeExpired
       );
 
+      // Debug için response'u kaydet
+      get().addPageResponse("EmployeeLeavesScreen", { ...result, endpoint: `/employees/${employeeId}/leaves` });
+
       if (result.success) {
         set({ isLoading: false });
         return { success: true, data: result.data };
@@ -1585,6 +1625,9 @@ const usePersonelStore = create((set, get) => ({
         endDate
       );
 
+      // Debug için response'u kaydet
+      get().addPageResponse("AllLeavesScreen", { ...result, endpoint: "/employees/any/leaves/all" });
+
       if (result.success) {
         set({
           allLeaves: result.data.leaves || [],
@@ -1671,6 +1714,39 @@ const usePersonelStore = create((set, get) => ({
       set({
         error: error.message,
         isLoading: false,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Bekleyen taleplerin özetini getir
+  fetchPendingRequests: async () => {
+    set({ pendingRequestsLoading: true, pendingRequestsError: null });
+    try {
+      const result = await getPendingRequests();
+
+      // Debug için response'u kaydet (hem global hem sayfa bazlı)
+      set({ pendingRequestsResponse: result });
+      get().addPageResponse("HomeScreen", result);
+
+      if (result.success) {
+        set({
+          pendingRequests: result.data,
+          pendingRequestsLoading: false,
+        });
+        return { success: true, data: result.data };
+      } else {
+        set({
+          pendingRequestsError: result.error,
+          pendingRequestsLoading: false,
+        });
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      set({
+        pendingRequestsError: error.message,
+        pendingRequestsLoading: false,
+        pendingRequestsResponse: { error: error.message, timestamp: new Date().toISOString() },
       });
       return { success: false, error: error.message };
     }

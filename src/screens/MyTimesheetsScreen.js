@@ -153,11 +153,13 @@ const MyTimesheetsScreen = ({ navigation }) => {
     fetchMyTimesheets,
     deleteTimesheet,
     timesheetPagination,
+    setCurrentPageName,
   } = usePersonelStore();
 
   useEffect(() => {
+    setCurrentPageName("MyTimesheets");
     fetchMyTimesheets();
-  }, [fetchMyTimesheets]);
+  }, [fetchMyTimesheets, setCurrentPageName]);
 
   const handleRefresh = () => {
     const currentPage = timesheetPagination?.page ?? 1;

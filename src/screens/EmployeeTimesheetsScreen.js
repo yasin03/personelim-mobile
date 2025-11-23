@@ -86,6 +86,7 @@ const EmployeeTimesheetsScreen = ({ route }) => {
     approveTimesheet,
     timesheetReviewPagination,
     timesheetReviewLoading,
+    setCurrentPageName,
   } = usePersonelStore();
 
   const [approvalModal, setApprovalModal] = useState({
@@ -98,8 +99,9 @@ const EmployeeTimesheetsScreen = ({ route }) => {
 
   useFocusEffect(
     useCallback(() => {
+      setCurrentPageName("EmployeeTimesheets");
       fetchEmployeeTimesheets(employeeId);
-    }, [employeeId, fetchEmployeeTimesheets])
+    }, [employeeId, fetchEmployeeTimesheets, setCurrentPageName])
   );
 
   const handleRefresh = () => {

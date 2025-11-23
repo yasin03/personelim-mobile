@@ -1,9 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { StyleSheet, View, ScrollView, TouchableOpacity } from "react-native";
 import { Layout, Text, Button, Card } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, CommonActions } from "@react-navigation/native";
 import useAuthStore from "../store/authStore";
 import usePersonelStore from "../store/personelStore";
 
@@ -13,11 +13,46 @@ const HomeScreen = ({ navigation }) => {
     statistics,
     fetchStatistics,
     isLoading,
+    pendingRequests,
+    pendingRequestsLoading,
+    pendingRequestsError,
+    fetchPendingRequests,
+    setCurrentPageName,
   } = usePersonelStore();
+  const pollingIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchStatistics();
   }, []);
+
+  // Polling mekanizması: 30 saniyede bir güncelle
+  useEffect(() => {
+    if (user?.role === "owner" || user?.role === "manager") {
+      // İlk yükleme
+      fetchPendingRequests();
+
+      // Polling başlat (30 saniye)
+      pollingIntervalRef.current = setInterval(() => {
+        fetchPendingRequests();
+      }, 30000);
+
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
+  }, [user?.role, fetchPendingRequests]);
+
+  // Sayfa focus olduğunda güncelle
+  useFocusEffect(
+    React.useCallback(() => {
+      setCurrentPageName("Home");
+      if (user?.role === "owner" || user?.role === "manager") {
+        fetchPendingRequests();
+      }
+    }, [user?.role, fetchPendingRequests, setCurrentPageName])
+  );
 
 
   const quickActions = [
@@ -30,7 +65,29 @@ const HomeScreen = ({ navigation }) => {
     {
       title: "Personel Listesi",
       subtitle: "Tüm personelleri görüntüle",
-      action: () => navigation.navigate("Personel"),
+      action: () => {
+        // Stack'i sıfırla ve PersonelList'e git
+        navigation.navigate("Personel", {
+          screen: "PersonelList",
+        });
+        // Stack'i reset et
+        setTimeout(() => {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                {
+                  name: "Personel",
+                  state: {
+                    routes: [{ name: "PersonelList" }],
+                    index: 0,
+                  },
+                },
+              ],
+            })
+          );
+        }, 100);
+      },
       color: "#2196F3",
     },
     ...(user?.role === "owner" || user?.role === "manager"
@@ -117,6 +174,164 @@ const HomeScreen = ({ navigation }) => {
               </Text>
             </Card>
           </View>
+
+          {/* Pending Requests Widget - Owner/Manager Only */}
+          {(user?.role === "owner" || user?.role === "manager") && (
+            <>
+              <Text category="h6" style={styles.sectionTitle}>
+                Bekleyen Talepler
+              </Text>
+              <Card style={styles.pendingRequestsCard}>
+                {pendingRequestsLoading && !pendingRequests ? (
+                  <View style={styles.pendingRequestsLoading}>
+                    <Text category="s1" appearance="hint">
+                      Yükleniyor...
+                    </Text>
+                  </View>
+                ) : pendingRequestsError ? (
+                  <View style={styles.pendingRequestsError}>
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={24}
+                      color="#F44336"
+                    />
+                    <Text category="s2" style={styles.errorText}>
+                      {pendingRequestsError}
+                    </Text>
+                    <Button
+                      size="small"
+                      status="basic"
+                      onPress={() => fetchPendingRequests()}
+                      style={styles.retryButton}
+                    >
+                      Tekrar Dene
+                    </Button>
+                  </View>
+                ) : pendingRequests && pendingRequests.total > 0 ? (
+                  <>
+                    <View style={styles.pendingRequestsHeader}>
+                      <Text category="h4" style={styles.pendingRequestsTotal}>
+                        {pendingRequests.total}
+                      </Text>
+                      <Text category="s2" appearance="hint">
+                        Toplam Bekleyen Talep
+                      </Text>
+                    </View>
+
+                    <View style={styles.pendingRequestsGrid}>
+                      <TouchableOpacity
+                        style={styles.pendingRequestItem}
+                        onPress={() =>
+                          navigation.navigate("Personel", {
+                            screen: "AllLeaves",
+                            params: { initialStatus: "pending" },
+                          })
+                        }
+                      >
+                        <View style={styles.pendingRequestIconContainer}>
+                          <Ionicons
+                            name="calendar-outline"
+                            size={24}
+                            color="#FF9800"
+                          />
+                        </View>
+                        <Text category="h5" style={styles.pendingRequestCount}>
+                          {pendingRequests.leaves.count}
+                        </Text>
+                        <Text category="c1" appearance="hint">
+                          İzin Talepleri
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.pendingRequestItem}
+                        onPress={() => {
+                          // Tüm bekleyen mesaileri görmek için PersonelList'e git
+                          // Kullanıcı oradan personel seçip mesailerini görebilir
+                          navigation.navigate("Personel", {
+                            screen: "PersonelList",
+                          });
+                          setTimeout(() => {
+                            navigation.dispatch(
+                              CommonActions.reset({
+                                index: 0,
+                                routes: [
+                                  {
+                                    name: "Personel",
+                                    state: {
+                                      routes: [{ name: "PersonelList" }],
+                                      index: 0,
+                                    },
+                                  },
+                                ],
+                              })
+                            );
+                          }, 100);
+                        }}
+                      >
+                        <View style={styles.pendingRequestIconContainer}>
+                          <Ionicons
+                            name="time-outline"
+                            size={24}
+                            color="#2196F3"
+                          />
+                        </View>
+                        <Text category="h5" style={styles.pendingRequestCount}>
+                          {pendingRequests.timesheets.count}
+                        </Text>
+                        <Text category="c1" appearance="hint">
+                          Mesai Talepleri
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.pendingRequestItem}
+                        onPress={() => {
+                          // TODO: Avans talepleri ekranı eklendiğinde buraya navigate edilecek
+                          // Şimdilik PersonelDetail'e gidiyoruz
+                          navigation.navigate("Personel");
+                        }}
+                      >
+                        <View style={styles.pendingRequestIconContainer}>
+                          <Ionicons
+                            name="cash-outline"
+                            size={24}
+                            color="#4CAF50"
+                          />
+                        </View>
+                        <Text category="h5" style={styles.pendingRequestCount}>
+                          {pendingRequests.advances.count}
+                        </Text>
+                        <Text category="c1" appearance="hint">
+                          Avans Talepleri
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {pendingRequests.lastUpdated && (
+                      <Text category="c2" appearance="hint" style={styles.lastUpdated}>
+                        Son güncelleme:{" "}
+                        {new Date(pendingRequests.lastUpdated).toLocaleString(
+                          "tr-TR"
+                        )}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.pendingRequestsEmpty}>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={48}
+                      color="#4CAF50"
+                    />
+                    <Text category="s1" style={styles.emptyText}>
+                      Bekleyen talep bulunmamaktadır
+                    </Text>
+                  </View>
+                )}
+              </Card>
+            </>
+          )}
 
           {/* Quick Actions */}
           <Text category="h6" style={styles.sectionTitle}>
@@ -230,6 +445,70 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     marginBottom: 8,
+  },
+  pendingRequestsCard: {
+    marginBottom: 24,
+    padding: 16,
+  },
+  pendingRequestsLoading: {
+    padding: 24,
+    alignItems: "center",
+  },
+  pendingRequestsHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  pendingRequestsTotal: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#2196F3",
+    marginBottom: 4,
+  },
+  pendingRequestsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 16,
+  },
+  pendingRequestItem: {
+    alignItems: "center",
+    flex: 1,
+    padding: 8,
+  },
+  pendingRequestIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  pendingRequestCount: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  lastUpdated: {
+    textAlign: "center",
+    marginTop: 12,
+    fontSize: 10,
+  },
+  pendingRequestsEmpty: {
+    padding: 32,
+    alignItems: "center",
+  },
+  pendingRequestsError: {
+    padding: 24,
+    alignItems: "center",
+  },
+  errorText: {
+    marginTop: 8,
+    marginBottom: 12,
+    textAlign: "center",
+    color: "#F44336",
+  },
+  retryButton: {
+    marginTop: 8,
   },
 });
 

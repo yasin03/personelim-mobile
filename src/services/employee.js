@@ -121,19 +121,66 @@ export const getEmployeeStatistics = async () => {
       headers,
     });
 
-    const data = await response.json();
+    // Response'un content-type'ını kontrol et
+    const contentType = response.headers.get("content-type");
+    let data;
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      // JSON değilse text olarak oku
+      const text = await response.text();
+      console.error("Get employee statistics - Non-JSON response:", text.substring(0, 200));
+      
+      // Eğer response ok ise ama JSON değilse, backend hatası olabilir
+      if (response.ok) {
+        return {
+          success: false,
+          error: "Backend'den beklenmeyen yanıt formatı alındı",
+        };
+      } else {
+        return {
+          success: false,
+          error: `Sunucu hatası (${response.status}): ${text.substring(0, 100)}`,
+        };
+      }
+    }
 
     if (response.ok) {
-      return {
+      const responseData = {
         success: true,
-        statistics: data.data,
+        statistics: data.data || data,
+        rawResponse: data, // Debug için
+        status: response.status,
+        timestamp: new Date().toISOString(),
+        endpoint: `${API_BASE_URL}/employees/statistics`,
       };
+      return responseData;
     } else {
-      return { success: false, error: data.message || data.error };
+      return {
+        success: false,
+        error: data.message || data.error || "İstatistikler alınamadı",
+        rawResponse: data, // Debug için
+        status: response.status,
+        timestamp: new Date().toISOString(),
+        endpoint: `${API_BASE_URL}/employees/statistics`,
+      };
     }
   } catch (error) {
     console.error("Get employee statistics error:", error);
-    return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+    
+    // JSON parse hatası ise özel mesaj
+    if (error.message && error.message.includes("JSON")) {
+      return {
+        success: false,
+        error: "Backend'den geçersiz yanıt alındı. Lütfen daha sonra tekrar deneyin.",
+      };
+    }
+    
+    return {
+      success: false,
+      error: "Bağlantı hatası. Lütfen tekrar deneyin.",
+    };
   }
 };
 
@@ -1737,5 +1784,147 @@ export const getAllLeaves = async (
   } catch (error) {
     console.error("Get all leaves error:", error);
     return { success: false, error: "Bağlantı hatası. Lütfen tekrar deneyin." };
+  }
+};
+
+// Bekleyen taleplerin özetini getir (Owner/Manager için)
+export const getPendingRequests = async () => {
+  try {
+    const headers = await getAuthHeaders();
+    const url = `${API_BASE_URL}/dashboard/pending-requests`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    // Response'un content-type'ını kontrol et
+    const contentType = response.headers.get("content-type");
+    let data;
+    let responseText = null;
+
+    // Önce text olarak oku, sonra JSON parse etmeyi dene
+    try {
+      responseText = await response.text();
+      
+      // Eğer response boşsa veya sadece whitespace ise
+      if (!responseText || !responseText.trim()) {
+        if (response.ok) {
+          return {
+            success: false,
+            error: "Backend'den boş yanıt alındı",
+          };
+        } else {
+          return {
+            success: false,
+            error: `Sunucu hatası (${response.status}): Boş yanıt`,
+          };
+        }
+      }
+
+      // JSON parse etmeyi dene
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          // JSON parse hatası - backend JSON döndürmüyor
+          console.error("Get pending requests - JSON parse error:", parseError);
+          console.error("Response text:", responseText.substring(0, 200));
+          
+          return {
+            success: false,
+            error: response.ok 
+              ? "Backend'den beklenmeyen yanıt formatı alındı"
+              : `Sunucu hatası (${response.status}): ${responseText.substring(0, 100)}`,
+          };
+        }
+      } else {
+        // JSON content-type değil ama JSON olabilir, yine de parse etmeyi dene
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          // JSON değil, text olarak işle
+          console.error("Get pending requests - Non-JSON response:", responseText.substring(0, 200));
+          
+          return {
+            success: false,
+            error: response.ok 
+              ? "Backend'den beklenmeyen yanıt formatı alındı"
+              : `Sunucu hatası (${response.status}): ${responseText.substring(0, 100)}`,
+          };
+        }
+      }
+    } catch (textError) {
+      // Response text okunamadı
+      console.error("Get pending requests - Response read error:", textError);
+      return {
+        success: false,
+        error: `Yanıt okunamadı (${response.status})`,
+      };
+    }
+
+    // Response başarılı ise
+    if (response.ok) {
+      const payload = data?.data ?? data ?? {};
+      return {
+        success: true,
+        data: {
+          total: payload.total || 0,
+          leaves: {
+            count: payload.leaves?.count || 0,
+            recent: payload.leaves?.recent || [],
+          },
+          timesheets: {
+            count: payload.timesheets?.count || 0,
+            recent: payload.timesheets?.recent || [],
+          },
+          advances: {
+            count: payload.advances?.count || 0,
+            recent: payload.advances?.recent || [],
+          },
+          lastUpdated: payload.lastUpdated || new Date().toISOString(),
+        },
+        rawResponse: data, // Debug için
+        rawText: responseText, // Debug için
+        status: response.status,
+        timestamp: new Date().toISOString(),
+        endpoint: url,
+      };
+    } else {
+      // Response başarısız
+      const errorMessage = data?.message || data?.error || responseText?.substring(0, 100) || "Bekleyen talepler alınamadı";
+      return {
+        success: false,
+        error: errorMessage,
+        rawResponse: data, // Debug için
+        rawText: responseText, // Debug için
+        status: response.status,
+        timestamp: new Date().toISOString(),
+        endpoint: url,
+      };
+    }
+  } catch (error) {
+    console.error("Get pending requests error:", error);
+    
+    // JSON parse hatası ise özel mesaj
+    if (error.message && (error.message.includes("JSON") || error.message.includes("Unexpected"))) {
+      return {
+        success: false,
+        error: "Backend'den geçersiz yanıt alındı. Lütfen daha sonra tekrar deneyin.",
+      };
+    }
+    
+    // Network hatası
+    if (error.message && error.message.includes("fetch")) {
+      return {
+        success: false,
+        error: "Bağlantı hatası. İnternet bağlantınızı kontrol edin.",
+      };
+    }
+    
+    return {
+      success: false,
+      error: "Bekleyen talepler yüklenirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
   }
 };

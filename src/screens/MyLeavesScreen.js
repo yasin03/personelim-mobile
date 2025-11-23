@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import usePersonelStore from "../store/personelStore";
 
 const MyLeavesScreen = ({ navigation }) => {
-  const { myLeaves, fetchMyLeaves, isLoading } = usePersonelStore();
+  const { myLeaves, fetchMyLeaves, isLoading, setCurrentPageName } = usePersonelStore();
   const [selectedStatus, setSelectedStatus] = useState(null);
 
   const statusOptions = [
@@ -24,8 +24,9 @@ const MyLeavesScreen = ({ navigation }) => {
   ];
 
   useEffect(() => {
+    setCurrentPageName("MyLeaves");
     fetchMyLeaves(1, 10, selectedStatus);
-  }, [selectedStatus, fetchMyLeaves]);
+  }, [selectedStatus, fetchMyLeaves, setCurrentPageName]);
 
   const handleRefresh = () => {
     fetchMyLeaves(1, 10, selectedStatus);
