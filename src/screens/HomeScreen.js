@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { StyleSheet, View, ScrollView, TouchableOpacity } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { StyleSheet, View, ScrollView, TouchableOpacity, Image } from "react-native";
 import { Layout, Text, Button, Card } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,10 +20,23 @@ const HomeScreen = ({ navigation }) => {
     setCurrentPageName,
   } = usePersonelStore();
   const pollingIntervalRef = useRef(null);
+  const [isPendingRequestsExpanded, setIsPendingRequestsExpanded] = useState(false);
 
   useEffect(() => {
     fetchStatistics();
   }, []);
+
+  // Tarih formatlama fonksiyonu
+  const getFormattedDate = () => {
+    const today = new Date();
+    const months = [
+      "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+      "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+    ];
+    const day = today.getDate();
+    const month = months[today.getMonth()];
+    return `Bugün ${day} ${month}, keyifli bir gün olsun`;
+  };
 
   // Polling mekanizması: 30 saniyede bir güncelle
   useEffect(() => {
@@ -61,35 +74,9 @@ const HomeScreen = ({ navigation }) => {
       subtitle: "Yeni personel kaydı",
       action: () => navigation.navigate("Personel", { screen: "AddPersonel" }),
       color: "#4CAF50",
+      icon: "person-add-outline",
     },
-    {
-      title: "Personel Listesi",
-      subtitle: "Tüm personelleri görüntüle",
-      action: () => {
-        // Stack'i sıfırla ve PersonelList'e git
-        navigation.navigate("Personel", {
-          screen: "PersonelList",
-        });
-        // Stack'i reset et
-        setTimeout(() => {
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [
-                {
-                  name: "Personel",
-                  state: {
-                    routes: [{ name: "PersonelList" }],
-                    index: 0,
-                  },
-                },
-              ],
-            })
-          );
-        }, 100);
-      },
-      color: "#2196F3",
-    },
+    
     ...(user?.role === "owner" || user?.role === "manager"
       ? [
           {
@@ -100,21 +87,11 @@ const HomeScreen = ({ navigation }) => {
                 screen: "AllLeaves",
               }),
             color: "#2196F3",
+            icon: "calendar-outline",
           },
         ]
       : []),
-    {
-      title: "Raporlar",
-      subtitle: "İstatistikler ve analizler",
-      action: () => navigation.navigate("Reports"),
-      color: "#FF9800",
-    },
-    {
-      title: "Ayarlar",
-      subtitle: "Uygulama ayarları",
-      action: () => navigation.navigate("Settings"),
-      color: "#9C27B0",
-    },
+
   ];
 
   return (
@@ -122,215 +99,296 @@ const HomeScreen = ({ navigation }) => {
       <Layout style={styles.content}>
         <ScrollView style={styles.scrollView}>
           {/* Header */}
-          <Card style={styles.headerCard}>
-            <Text category="h4" style={styles.welcomeText}>
-              Hoş geldiniz! 👋
-            </Text>
-            <Text category="s1" style={styles.userText}>
-              {user?.name || user?.email}
-            </Text>
-            {business && (
-              <Text category="c1" style={styles.businessText}>
-                {business.name}
-              </Text>
-            )}
-          </Card>
+
+            <View style={styles.headerContent}>
+              {/* Sol taraf - Avatar */}
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={user?.photoURL ? { uri: user.photoURL } : require("../../assets/icon.png")}
+                  style={styles.avatar}
+                />
+              </View>
+
+              {/* Orta - Hoşgeldin mesajı */}
+              <View style={styles.headerTextContainer}>
+                <Text category="h5" style={styles.welcomeText}>
+                  Hoşgeldin {user?.name || user?.email?.split("@")[0] || "Kullanıcı"}
+                </Text>
+                <Text category="s1" style={styles.userText}>
+                  {getFormattedDate()}
+                </Text>
+              </View>
+
+              {/* Sağ taraf - Bildirim ikonu */}
+              <TouchableOpacity
+                style={styles.notificationIcon}
+                onPress={() => {
+                  // Bildirim sayfasına git
+                  // navigation.navigate("Notifications");
+                }}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#2196F3" />
+              </TouchableOpacity>
+            </View>
 
           {/* Statistics Cards */}
           <View style={styles.statsContainer}>
-            <Card style={styles.statCard}>
-              <Text category="h6" style={styles.statNumber}>
-                {statistics?.total || 0}
-              </Text>
-              <Text category="s2" style={styles.statLabel}>
-                Toplam Personel
-              </Text>
+            <Card style={[styles.statCard, styles.statCardBlue]}>
+              <View style={styles.statCardContent}>
+                <View style={styles.statCardLeft}>
+                  <Text category="h5" style={[styles.statNumber, styles.statNumberBlue]}>
+                    {statistics?.total || 0}
+                  </Text>
+                  <Text category="c1" style={styles.statLabel}>
+                    Toplam Personel
+                  </Text>
+                </View>
+                <View style={styles.statCardRight}>
+                  <Ionicons name="people-outline" size={40} color="#2196F3" />
+                </View>
+              </View>
             </Card>
 
-            <Card style={styles.statCard}>
-              <Text category="h6" style={styles.statNumber}>
-                {statistics?.active || 0}
-              </Text>
-              <Text category="s2" style={styles.statLabel}>
-                Aktif Personel
-              </Text>
+            <Card style={[styles.statCard, styles.statCardGreen]}>
+              <View style={styles.statCardContent}>
+                <View style={styles.statCardLeft}>
+                  <Text category="h5" style={[styles.statNumber, styles.statNumberGreen]}>
+                    {statistics?.active || 0}
+                  </Text>
+                  <Text category="c1" style={styles.statLabel}>
+                    Aktif Personel
+                  </Text>
+                </View>
+                <View style={styles.statCardRight}>
+                  <Ionicons name="checkmark-circle-outline" size={40} color="#4CAF50" />
+                </View>
+              </View>
             </Card>
 
-            <Card style={styles.statCard}>
-              <Text category="h6" style={styles.statNumber}>
-                {Object.keys(statistics?.departments || {}).length}
-              </Text>
-              <Text category="s2" style={styles.statLabel}>
-                Departman
-              </Text>
+            <Card style={[styles.statCard, styles.statCardOrange]}>
+              <View style={styles.statCardContent}>
+                <View style={styles.statCardLeft}>
+                  <Text category="h5" style={[styles.statNumber, styles.statNumberOrange]}>
+                    {Object.keys(statistics?.departments || {}).length}
+                  </Text>
+                  <Text category="c1" style={styles.statLabel}>
+                    Departman
+                  </Text>
+                </View>
+                <View style={styles.statCardRight}>
+                  <Ionicons name="business-outline" size={40} color="#FF9800" />
+                </View>
+              </View>
             </Card>
 
-            <Card style={styles.statCard}>
-              <Text category="h6" style={styles.statNumber}>
-                {statistics?.deleted || 0}
-              </Text>
-              <Text category="s2" style={styles.statLabel}>
-                Pasif Personel
-              </Text>
+            <Card style={[styles.statCard, styles.statCardRed]}>
+              <View style={styles.statCardContent}>
+                <View style={styles.statCardLeft}>
+                  <Text category="h5" style={[styles.statNumber, styles.statNumberRed]}>
+                    {statistics?.deleted || 0}
+                  </Text>
+                  <Text category="c1" style={styles.statLabel}>
+                    Pasif Personel
+                  </Text>
+                </View>
+                <View style={styles.statCardRight}>
+                  <Ionicons name="close-circle-outline" size={40} color="#F44336" />
+                </View>
+              </View>
             </Card>
           </View>
 
           {/* Pending Requests Widget - Owner/Manager Only */}
           {(user?.role === "owner" || user?.role === "manager") && (
-            <>
-              <Text category="h6" style={styles.sectionTitle}>
-                Bekleyen Talepler
-              </Text>
-              <Card style={styles.pendingRequestsCard}>
-                {pendingRequestsLoading && !pendingRequests ? (
-                  <View style={styles.pendingRequestsLoading}>
-                    <Text category="s1" appearance="hint">
-                      Yükleniyor...
-                    </Text>
-                  </View>
-                ) : pendingRequestsError ? (
-                  <View style={styles.pendingRequestsError}>
+            <Card style={styles.pendingRequestsCard}>
+              <TouchableOpacity
+                style={styles.pendingRequestsHeaderButton}
+                onPress={() => setIsPendingRequestsExpanded(!isPendingRequestsExpanded)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.pendingRequestsHeaderContent}>
+                  <View style={styles.pendingRequestsHeaderLeft}>
                     <Ionicons
-                      name="alert-circle-outline"
-                      size={24}
-                      color="#F44336"
+                      name="notifications"
+                      size={20}
+                      color="#2196F3"
+                      style={styles.pendingRequestsHeaderIcon}
                     />
-                    <Text category="s2" style={styles.errorText}>
-                      {pendingRequestsError}
+                    <Text category="h6" style={styles.pendingRequestsHeaderTitle}>
+                      Bekleyen Talepler
                     </Text>
-                    <Button
-                      size="small"
-                      status="basic"
-                      onPress={() => fetchPendingRequests()}
-                      style={styles.retryButton}
-                    >
-                      Tekrar Dene
-                    </Button>
                   </View>
-                ) : pendingRequests && pendingRequests.total > 0 ? (
-                  <>
-                    <View style={styles.pendingRequestsHeader}>
-                      <Text category="h4" style={styles.pendingRequestsTotal}>
-                        {pendingRequests.total}
+                  <View style={styles.pendingRequestsHeaderRight}>
+                    {pendingRequestsLoading ? (
+                      <Text category="c1" appearance="hint">
+                        Yükleniyor...
                       </Text>
-                      <Text category="s2" appearance="hint">
-                        Toplam Bekleyen Talep
-                      </Text>
-                    </View>
-
-                    <View style={styles.pendingRequestsGrid}>
-                      <TouchableOpacity
-                        style={styles.pendingRequestItem}
-                        onPress={() =>
-                          navigation.navigate("Personel", {
-                            screen: "AllLeaves",
-                            params: { initialStatus: "pending" },
-                          })
-                        }
-                      >
-                        <View style={styles.pendingRequestIconContainer}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={24}
-                            color="#FF9800"
-                          />
-                        </View>
-                        <Text category="h5" style={styles.pendingRequestCount}>
-                          {pendingRequests.leaves.count}
+                    ) : pendingRequestsError ? (
+                      <View style={styles.pendingRequestsBadgeError}>
+                        <Ionicons name="alert-circle" size={14} color="#F44336" />
+                      </View>
+                    ) : pendingRequests && pendingRequests.total > 0 ? (
+                      <View style={styles.pendingRequestsBadge}>
+                        <Text style={styles.pendingRequestsBadgeText}>
+                          {pendingRequests.total}
                         </Text>
-                        <Text category="c1" appearance="hint">
-                          İzin Talepleri
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.pendingRequestItem}
-                        onPress={() => {
-                          // Tüm bekleyen mesaileri görmek için PersonelList'e git
-                          // Kullanıcı oradan personel seçip mesailerini görebilir
-                          navigation.navigate("Personel", {
-                            screen: "PersonelList",
-                          });
-                          setTimeout(() => {
-                            navigation.dispatch(
-                              CommonActions.reset({
-                                index: 0,
-                                routes: [
-                                  {
-                                    name: "Personel",
-                                    state: {
-                                      routes: [{ name: "PersonelList" }],
-                                      index: 0,
-                                    },
-                                  },
-                                ],
-                              })
-                            );
-                          }, 100);
-                        }}
-                      >
-                        <View style={styles.pendingRequestIconContainer}>
-                          <Ionicons
-                            name="time-outline"
-                            size={24}
-                            color="#2196F3"
-                          />
-                        </View>
-                        <Text category="h5" style={styles.pendingRequestCount}>
-                          {pendingRequests.timesheets.count}
-                        </Text>
-                        <Text category="c1" appearance="hint">
-                          Mesai Talepleri
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.pendingRequestItem}
-                        onPress={() => {
-                          // TODO: Avans talepleri ekranı eklendiğinde buraya navigate edilecek
-                          // Şimdilik PersonelDetail'e gidiyoruz
-                          navigation.navigate("Personel");
-                        }}
-                      >
-                        <View style={styles.pendingRequestIconContainer}>
-                          <Ionicons
-                            name="cash-outline"
-                            size={24}
-                            color="#4CAF50"
-                          />
-                        </View>
-                        <Text category="h5" style={styles.pendingRequestCount}>
-                          {pendingRequests.advances.count}
-                        </Text>
-                        <Text category="c1" appearance="hint">
-                          Avans Talepleri
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {pendingRequests.lastUpdated && (
-                      <Text category="c2" appearance="hint" style={styles.lastUpdated}>
-                        Son güncelleme:{" "}
-                        {new Date(pendingRequests.lastUpdated).toLocaleString(
-                          "tr-TR"
-                        )}
-                      </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.pendingRequestsBadgeEmpty}>
+                        <Ionicons name="checkmark-circle" size={14} color="#4CAF50" />
+                      </View>
                     )}
-                  </>
-                ) : (
-                  <View style={styles.pendingRequestsEmpty}>
                     <Ionicons
-                      name="checkmark-circle-outline"
-                      size={48}
-                      color="#4CAF50"
+                      name={isPendingRequestsExpanded ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#666"
                     />
-                    <Text category="s1" style={styles.emptyText}>
-                      Bekleyen talep bulunmamaktadır
-                    </Text>
                   </View>
-                )}
-              </Card>
-            </>
+                </View>
+              </TouchableOpacity>
+
+              {isPendingRequestsExpanded && (
+                <View style={styles.pendingRequestsContent}>
+                  {pendingRequestsLoading && !pendingRequests ? (
+                    <View style={styles.pendingRequestsLoading}>
+                      <Text category="s1" appearance="hint">
+                        Yükleniyor...
+                      </Text>
+                    </View>
+                  ) : pendingRequestsError ? (
+                    <View style={styles.pendingRequestsError}>
+                      <Ionicons
+                        name="alert-circle-outline"
+                        size={24}
+                        color="#F44336"
+                      />
+                      <Text category="s2" style={styles.errorText}>
+                        {pendingRequestsError}
+                      </Text>
+                      <Button
+                        size="small"
+                        status="basic"
+                        onPress={() => fetchPendingRequests()}
+                        style={styles.retryButton}
+                      >
+                        Tekrar Dene
+                      </Button>
+                    </View>
+                  ) : pendingRequests && pendingRequests.total > 0 ? (
+                    <>
+                      <View style={styles.pendingRequestsGrid}>
+                        <TouchableOpacity
+                          style={styles.pendingRequestItem}
+                          onPress={() => {
+                            setIsPendingRequestsExpanded(false);
+                            navigation.navigate("Personel", {
+                              screen: "AllLeaves",
+                              params: { initialStatus: "pending" },
+                            });
+                          }}
+                        >
+                          <View style={styles.pendingRequestIconContainer}>
+                            <Ionicons
+                              name="calendar-outline"
+                              size={24}
+                              color="#FF9800"
+                            />
+                          </View>
+                          <Text category="h5" style={styles.pendingRequestCount}>
+                            {pendingRequests.leaves.count}
+                          </Text>
+                          <Text category="c1" appearance="hint">
+                            İzin Talepleri
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.pendingRequestItem}
+                          onPress={() => {
+                            setIsPendingRequestsExpanded(false);
+                            navigation.navigate("Personel", {
+                              screen: "PersonelList",
+                            });
+                            setTimeout(() => {
+                              navigation.dispatch(
+                                CommonActions.reset({
+                                  index: 0,
+                                  routes: [
+                                    {
+                                      name: "Personel",
+                                      state: {
+                                        routes: [{ name: "PersonelList" }],
+                                        index: 0,
+                                      },
+                                    },
+                                  ],
+                                })
+                              );
+                            }, 100);
+                          }}
+                        >
+                          <View style={styles.pendingRequestIconContainer}>
+                            <Ionicons
+                              name="time-outline"
+                              size={24}
+                              color="#2196F3"
+                            />
+                          </View>
+                          <Text category="h5" style={styles.pendingRequestCount}>
+                            {pendingRequests.timesheets.count}
+                          </Text>
+                          <Text category="c1" appearance="hint">
+                            Mesai Talepleri
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.pendingRequestItem}
+                          onPress={() => {
+                            setIsPendingRequestsExpanded(false);
+                            navigation.navigate("Personel");
+                          }}
+                        >
+                          <View style={styles.pendingRequestIconContainer}>
+                            <Ionicons
+                              name="cash-outline"
+                              size={24}
+                              color="#4CAF50"
+                            />
+                          </View>
+                          <Text category="h5" style={styles.pendingRequestCount}>
+                            {pendingRequests.advances.count}
+                          </Text>
+                          <Text category="c1" appearance="hint">
+                            Avans Talepleri
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {pendingRequests.lastUpdated && (
+                        <Text category="c2" appearance="hint" style={styles.lastUpdated}>
+                          Son güncelleme:{" "}
+                          {new Date(pendingRequests.lastUpdated).toLocaleString(
+                            "tr-TR"
+                          )}
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <View style={styles.pendingRequestsEmpty}>
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={32}
+                        color="#4CAF50"
+                      />
+                      <Text category="s1" style={styles.emptyText}>
+                        Bekleyen talep bulunmamaktadır
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </Card>
           )}
 
           {/* Quick Actions */}
@@ -340,18 +398,27 @@ const HomeScreen = ({ navigation }) => {
 
           <View style={styles.actionsContainer}>
             {quickActions.map((action, index) => (
-              <Card
+              <TouchableOpacity
                 key={index}
                 style={[styles.actionCard, { borderLeftColor: action.color }]}
                 onPress={action.action}
+                activeOpacity={0.7}
               >
-                <Text category="h6" style={styles.actionTitle}>
-                  {action.title}
-                </Text>
-                <Text category="c1" style={styles.actionSubtitle}>
-                  {action.subtitle}
-                </Text>
-              </Card>
+                <View style={styles.actionCardContent}>
+                  <View style={[styles.actionIconContainer, { backgroundColor: `${action.color}15` }]}>
+                    <Ionicons name={action.icon} size={24} color={action.color} />
+                  </View>
+                  <View style={styles.actionTextContainer}>
+                    <Text category="s1" style={styles.actionTitle}>
+                      {action.title}
+                    </Text>
+                    <Text category="c2" style={styles.actionSubtitle}>
+                      {action.subtitle}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#999" />
+                </View>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -390,32 +457,108 @@ const styles = StyleSheet.create({
   headerCard: {
     marginBottom: 16,
   },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 36,
+  },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#e0e0e0",
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
   welcomeText: {
+    fontSize: 14,
     marginBottom: 4,
+    textAlign: "center",
   },
   userText: {
-    marginBottom: 2,
-  },
-  businessText: {
+    fontSize: 12,
+    textAlign: "center",
     opacity: 0.7,
+  },
+  notificationIcon: {
+    marginLeft: 12,
+    padding: 8,
   },
   statsContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     marginBottom: 24,
+    gap: 12,
   },
   statCard: {
     flex: 0.48,
+    minWidth: "47%",
+
+    borderRadius: 12,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  statCardBlue: {
+    backgroundColor: "#E3F2FD",
+  },
+  statCardGreen: {
+    backgroundColor: "#E8F5E9",
+  },
+  statCardOrange: {
+    backgroundColor: "#FFF3E0",
+  },
+  statCardRed: {
+    backgroundColor: "#FFEBEE",
+  },
+  statCardContent: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 20,
+    justifyContent: "space-between",
+  },
+  statCardLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  statCardRight: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
   },
   statNumber: {
     marginBottom: 4,
     fontWeight: "bold",
+    textAlign: "left",
+    fontSize: 18,
+  },
+  statNumberBlue: {
+    color: "#2196F3",
+  },
+  statNumberGreen: {
+    color: "#4CAF50",
+  },
+  statNumberOrange: {
+    color: "#FF9800",
+  },
+  statNumberRed: {
+    color: "#F44336",
   },
   statLabel: {
-    opacity: 0.7,
-    textAlign: "center",
+    opacity: 0.8,
+    textAlign: "left",
+    fontSize: 10,
+    marginTop: 2,
   },
   sectionTitle: {
     marginBottom: 12,
@@ -425,15 +568,41 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   actionCard: {
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    paddingVertical: 16,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderRadius: 8,
+    backgroundColor: "#FFF",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  actionCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  actionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  actionTextContainer: {
+    flex: 1,
   },
   actionTitle: {
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
   },
   actionSubtitle: {
-    opacity: 0.7,
+    opacity: 0.6,
+    fontSize: 11,
   },
   activityCard: {
     paddingVertical: 32,
@@ -447,22 +616,70 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pendingRequestsCard: {
-    marginBottom: 24,
-    padding: 16,
+    marginBottom: 16,
+    padding: 0,
+    overflow: "hidden",
+  },
+  pendingRequestsHeaderButton: {
+
+  },
+  pendingRequestsHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pendingRequestsHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  pendingRequestsHeaderIcon: {
+    marginRight: 8,
+  },
+  pendingRequestsHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  pendingRequestsHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pendingRequestsBadge: {
+    backgroundColor: "#2196F3",
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingRequestsBadgeText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  pendingRequestsBadgeEmpty: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingRequestsBadgeError: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pendingRequestsContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
   },
   pendingRequestsLoading: {
     padding: 24,
     alignItems: "center",
-  },
-  pendingRequestsHeader: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  pendingRequestsTotal: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#2196F3",
-    marginBottom: 4,
   },
   pendingRequestsGrid: {
     flexDirection: "row",
@@ -494,7 +711,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   pendingRequestsEmpty: {
-    padding: 32,
+    padding: 20,
     alignItems: "center",
   },
   pendingRequestsError: {

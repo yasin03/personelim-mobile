@@ -51,13 +51,7 @@ const EmployeeTabNavigator = () => {
           tabBarLabel: "Ana Sayfa",
         }}
       />
-      <Tab.Screen
-        name="Profile"
-        component={MyProfileScreen}
-        options={{
-          tabBarLabel: "Profilim",
-        }}
-      />
+      
       <Tab.Screen
         name="Leaves"
         component={MyLeavesScreen}
@@ -77,6 +71,13 @@ const EmployeeTabNavigator = () => {
         component={MyTimesheetsScreen}
         options={{
           tabBarLabel: "Mesailerim",
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={MyProfileScreen}
+        options={{
+          tabBarLabel: "Profilim",
         }}
       />
     </Tab.Navigator>

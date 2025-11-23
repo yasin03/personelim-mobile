@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity } from "react-native";
 import {
   Layout,
   Text,
@@ -13,6 +13,7 @@ import {
   Toggle,
 } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -517,10 +518,19 @@ const AddPersonelScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <Layout style={styles.content}>
-        <View style={styles.header}>
-          <Text category="h4" style={styles.title}>
+        {/* Header with Back Button */}
+        <View style={styles.topHeader}>
+          <Text category="h5" style={styles.pageTitle}>
             {isEdit ? "Personeli Düzenle" : "Yeni Personel Ekle"}
           </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2196F3" />
+          </TouchableOpacity>
+          <View style={styles.placeholder} />
         </View>
 
         <ScrollView
@@ -528,9 +538,12 @@ const AddPersonelScreen = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           <Card style={styles.formCard}>
-            <Text category="h6" style={styles.sectionTitle}>
-              Kişisel Bilgiler
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="person" size={20} color="#2196F3" style={styles.sectionIcon} />
+              <Text category="h6" style={styles.sectionTitle}>
+                Kişisel Bilgiler
+              </Text>
+            </View>
 
             <Controller
               control={control}
@@ -655,9 +668,12 @@ const AddPersonelScreen = ({ navigation, route }) => {
               ))}
             </Select>
 
-            <Text category="h6" style={styles.sectionTitle}>
-              İş Bilgileri
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="briefcase" size={20} color="#FF9800" style={styles.sectionIcon} />
+              <Text category="h6" style={styles.sectionTitle}>
+                İş Bilgileri
+              </Text>
+            </View>
 
             <Controller
               control={control}
@@ -833,9 +849,12 @@ const AddPersonelScreen = ({ navigation, route }) => {
               )}
             />
 
-            <Text category="h6" style={styles.sectionTitle}>
-              Ek Bilgiler
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="information-circle" size={20} color="#4CAF50" style={styles.sectionIcon} />
+              <Text category="h6" style={styles.sectionTitle}>
+                Ek Bilgiler
+              </Text>
+            </View>
 
             <Controller
               control={control}
@@ -1011,23 +1030,50 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
   },
-  header: {
-    marginBottom: 16,
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  title: {
-    textAlign: "center",
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    flex: 1,
+    paddingLeft: 16,
+
+  },
+  placeholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   formCard: {
     marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
     marginTop: 8,
+  },
+  sectionIcon: {
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   input: {
     marginBottom: 16,
@@ -1050,6 +1096,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
     marginBottom: 20,
+    paddingHorizontal: 0,
   },
   passwordEye: {
     fontSize: 16,

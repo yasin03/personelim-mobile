@@ -5,9 +5,11 @@ import {
   FlatList,
   RefreshControl,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import { Layout, Text, Card, Button, Avatar } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import usePersonelStore from "../store/personelStore";
 
@@ -106,9 +108,13 @@ const ArchivedPersonelScreen = ({ navigation }) => {
           <Text category="h4" style={styles.title}>
             Arşivlenmiş Personeller
           </Text>
-          <Button appearance="ghost" size="small" onPress={() => navigation.goBack()}>
-            Geri dön
-          </Button>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2196F3" />
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -150,7 +156,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
+    fontSize: 20,
     fontWeight: "600",
+    flex: 1,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   listContent: {
     paddingBottom: 24,

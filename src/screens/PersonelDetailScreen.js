@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, ScrollView, Alert, TouchableOpacity } from "react-native";
 import {
   Layout,
   Text,
@@ -12,6 +12,27 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import usePersonelStore from "../store/personelStore";
 import useAuthStore from "../store/authStore";
+
+const avatarColors = [
+  "#FDE68A", // sarı
+  "#A7F3D0", // yeşil
+  "#BFDBFE", // mavi
+  "#FBCFE8", // pembe
+  "#DDD6FE", // mor
+  "#FECACA", // kırmızımsı
+  "#C7D2FE", // indigo
+];
+
+// Personel ID'sine veya ismine göre sabit renk döndürür
+const getAvatarColor = (personel) => {
+  const identifier = personel?.id || personel?._id || `${personel?.firstName}${personel?.lastName}` || "default";
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+};
 
 const PersonelDetailScreen = ({ navigation, route }) => {
   const { personel } = route.params;
@@ -147,19 +168,20 @@ const PersonelDetailScreen = ({ navigation, route }) => {
     );
   };
 
-  const InfoRow = ({ label, value, icon }) => (
+  const InfoRow = ({ label, value, icon, iconColor = "#2196F3" }) => (
     <View style={styles.infoRow}>
-      <View style={styles.infoLabelContainer}>
+      <View style={styles.infoLeft}>
         {icon && (
-          <Ionicons
-            name={icon}
-            size={20}
-            color="#666"
-            style={styles.infoIcon}
-          />
+          <View style={[styles.infoIconContainer, { backgroundColor: `${iconColor}15` }]}>
+            <Ionicons
+              name={icon}
+              size={18}
+              color={iconColor}
+            />
+          </View>
         )}
         <Text category="s2" style={styles.infoLabel}>
-          {label}:
+          {label}
         </Text>
       </View>
       <Text category="p1" style={styles.infoValue}>
@@ -168,9 +190,27 @@ const PersonelDetailScreen = ({ navigation, route }) => {
     </View>
   );
 
+  const initials = `${personelData?.firstName?.[0] ?? ""}${personelData?.lastName?.[0] ?? ""}`.toUpperCase();
+  const bgColor = getAvatarColor(personelData);
+  const hasProfilePicture = personelData?.profilePictureUrl;
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <Layout style={styles.content}>
+                {/* Header with Back Button */}
+                <View style={styles.topHeader}>
+          <Text category="h5" style={styles.pageTitle}>
+            Personel Detayı
+          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2196F3" />
+          </TouchableOpacity>
+          <View style={styles.placeholder} />
+        </View>
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
@@ -178,72 +218,118 @@ const PersonelDetailScreen = ({ navigation, route }) => {
           {/* Header Card */}
           <Card style={styles.headerCard}>
             <View style={styles.headerContent}>
-              <Avatar
-                size="giant"
-                source={{
-                  uri: `https://ui-avatars.com/api/?name=${personelData.firstName}+${personelData.lastName}&background=random`,
-                }}
-                style={styles.avatar}
-              />
+              {/* Sol: Avatar */}
+              {hasProfilePicture ? (
+                <Avatar
+                  size="large"
+                  source={{ uri: personelData.profilePictureUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.customAvatar, { backgroundColor: bgColor }]}>
+                  <Text style={styles.initialText}>{initials}</Text>
+                </View>
+              )}
+              
+              {/* Orta: Bilgiler */}
               <View style={styles.headerInfo}>
                 <Text category="h5" style={styles.name}>
                   {personelData.firstName} {personelData.lastName}
                 </Text>
+               
                 <Text category="s1" style={styles.position}>
-                  {personelData.position}
+                  {personelData.position || "Pozisyon belirtilmemiş"}
                 </Text>
                 <Text category="c1" style={styles.department}>
-                  {personelData.department}
+                  {personelData.department || "Departman belirtilmemiş"}
                 </Text>
               </View>
+
+              {/* Sağ: Rol */}
+              {personelData.userId && (
+                <View style={styles.headerRoleContainer}>
+                   <View style={styles.statusBadge}>
+                  <View style={[styles.statusDot, { backgroundColor: personelData.isDeleted ? "#F44336" : "#4CAF50" }]} />
+                  <Text category="c2" style={[styles.statusText, { color: personelData.isDeleted ? "#F44336" : "#4CAF50" }]}>
+                    {personelData.isDeleted ? "Pasif" : "Aktif"}
+                  </Text>
+                </View>
+                  <View style={[styles.headerRoleBadge, {
+                    backgroundColor: accountRole === "manager" ? "#FF980015" : accountRole === "owner" ? "#F4433615" : "#2196F315"
+                  }]}>
+                    <Ionicons 
+                      name={accountRole === "manager" ? "shield" : accountRole === "owner" ? "star" : "person"} 
+                      size={16} 
+                      color={accountRole === "manager" ? "#FF9800" : accountRole === "owner" ? "#F44336" : "#2196F3"} 
+                    />
+                    <Text category="c2" style={[styles.headerRoleText, {
+                      color: accountRole === "manager" ? "#FF9800" : accountRole === "owner" ? "#F44336" : "#2196F3"
+                    }]}>
+                      {accountRole === "manager" ? "Manager" : accountRole === "owner" ? "Owner" : "Employee"}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           </Card>
 
           {/* Contact Information */}
           <Card style={styles.infoCard}>
-            <Text category="h6" style={styles.sectionTitle}>
-              İletişim Bilgileri
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="call" size={20} color="#2196F3" style={styles.sectionIcon} />
+              <Text category="h6" style={styles.sectionTitle}>
+                İletişim Bilgileri
+              </Text>
+            </View>
             <Divider style={styles.divider} />
 
             <InfoRow
               label="Email"
               value={personelData.email}
               icon="mail-outline"
+              iconColor="#2196F3"
             />
             <InfoRow
               label="Telefon"
               value={personelData.phone}
               icon="call-outline"
+              iconColor="#4CAF50"
             />
             <InfoRow
               label="Adres"
               value={personelData.address}
               icon="location-outline"
+              iconColor="#FF9800"
             />
             <InfoRow
               label="Acil Durum"
               value={personelData.emergencyContact}
               icon="alert-circle-outline"
+              iconColor="#F44336"
             />
           </Card>
 
           {/* Work Information */}
           <Card style={styles.infoCard}>
-            <Text category="h6" style={styles.sectionTitle}>
-              İş Bilgileri
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="briefcase" size={20} color="#FF9800" style={styles.sectionIcon} />
+              <Text category="h6" style={styles.sectionTitle}>
+                İş Bilgileri
+              </Text>
+            </View>
             <Divider style={styles.divider} />
 
             <InfoRow
               label="Pozisyon"
               value={personelData.position}
               icon="briefcase-outline"
+              iconColor="#FF9800"
             />
             <InfoRow
               label="Departman"
               value={personelData.department}
               icon="business-outline"
+              iconColor="#2196F3"
             />
             <InfoRow
               label="Maaş"
@@ -253,55 +339,65 @@ const PersonelDetailScreen = ({ navigation, route }) => {
                   : undefined
               }
               icon="card-outline"
+              iconColor="#4CAF50"
             />
             <InfoRow
               label="İşe Başlama"
               value={personelData.startDate}
               icon="calendar-outline"
-            />
-            <InfoRow
-              label="Durum"
-              value={personelData.isDeleted ? "Pasif" : "Aktif"}
-              icon="checkmark-circle-outline"
+              iconColor="#9C27B0"
             />
           </Card>
 
           {/* User Account Information */}
           {personelData.userId ? (
             <Card style={styles.infoCard}>
-              <Text category="h6" style={styles.sectionTitle}>
-                Kullanıcı Hesabı
-              </Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="person" size={20} color="#9C27B0" style={styles.sectionIcon} />
+                <Text category="h6" style={styles.sectionTitle}>
+                  Kullanıcı Hesabı
+                </Text>
+              </View>
               <Divider style={styles.divider} />
 
               <InfoRow
                 label="Hesap Durumu"
                 value="Aktif"
-                icon="person-outline"
+                icon="checkmark-circle"
+                iconColor="#4CAF50"
               />
               <InfoRow
                 label="Kullanıcı ID"
                 value={personelData.userId}
                 icon="key-outline"
+                iconColor="#666"
               />
-              <InfoRow
-                label="Rol"
-                value={
-                  accountRole === "manager"
-                    ? "Manager"
-                    : accountRole === "owner"
-                    ? "Owner"
-                    : "Employee"
-                }
-                icon="ribbon-outline"
-              />
+              <View style={styles.roleContainer}>
+                <View style={styles.infoLeft}>
+                  <View style={[styles.infoIconContainer, { backgroundColor: "#9C27B015" }]}>
+                    <Ionicons name="ribbon-outline" size={18} color="#9C27B0" />
+                  </View>
+                  <Text category="s2" style={styles.infoLabel}>
+                    Rol
+                  </Text>
+                </View>
+                <View style={[styles.roleBadge, { 
+                  backgroundColor: accountRole === "manager" ? "#FF980015" : accountRole === "owner" ? "#F4433615" : "#2196F315" 
+                }]}>
+                  <Text category="c1" style={[styles.roleText, {
+                    color: accountRole === "manager" ? "#FF9800" : accountRole === "owner" ? "#F44336" : "#2196F3"
+                  }]}>
+                    {accountRole === "manager" ? "Manager" : accountRole === "owner" ? "Owner" : "Employee"}
+                  </Text>
+                </View>
+              </View>
 
               {canManageRoles && (
                 <View style={styles.roleButtons}>
                   {accountRole !== "manager" && (
                     <Button
                       size="small"
-                      status="success"
+                      status="danger"
                       style={styles.roleButton}
                       disabled={isUpdatingRole}
                       onPress={() => handleRoleChange("manager")}
@@ -326,39 +422,47 @@ const PersonelDetailScreen = ({ navigation, route }) => {
             </Card>
           ) : (
             <Card style={styles.infoCard}>
-              <Text category="h6" style={styles.sectionTitle}>
-                Kullanıcı Hesabı
-              </Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="person" size={20} color="#9C27B0" style={styles.sectionIcon} />
+                <Text category="h6" style={styles.sectionTitle}>
+                  Kullanıcı Hesabı
+                </Text>
+              </View>
               <Divider style={styles.divider} />
 
-              <Text category="p2" style={styles.noUserText}>
-                Bu personel için henüz kullanıcı hesabı oluşturulmamış
-              </Text>
-              <Button
-                appearance="ghost"
-                status="info"
-                onPress={handleCreateUser}
-                style={styles.createUserButton}
-              >
-                Kullanıcı Hesabı Oluştur
-              </Button>
+              <View style={styles.emptyUserState}>
+                <Ionicons name="person-outline" size={48} color="#999" />
+                <Text category="p2" style={styles.noUserText}>
+                  Bu personel için henüz kullanıcı hesabı oluşturulmamış
+                </Text>
+                <Button
+                  appearance="outline"
+                  status="info"
+                  onPress={handleCreateUser}
+                  style={styles.createUserButton}
+                  accessoryLeft={(props) => <Ionicons name="add-circle-outline" size={20} color="#2196F3" />}
+                >
+                  Kullanıcı Hesabı Oluştur
+                </Button>
+              </View>
             </Card>
           )}
         </ScrollView>
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <Button
-            appearance="outline"
-            status="primary"
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
             onPress={handleEdit}
-            style={styles.editButton}
+            activeOpacity={0.7}
           >
-            Düzenle
-          </Button>
-          <Button
-            appearance="outline"
-            status="info"
+            <View style={[styles.actionIconContainer]}>
+              <Ionicons name="create-outline" size={20} color="#2196F3" />
+            </View>
+            <Text style={[styles.actionButtonText, { color: "#2196F3" }]}>Düzenle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.timesheetButton]}
             onPress={() =>
               navigation.navigate("EmployeeTimesheets", {
                 employeeId: personelId,
@@ -367,13 +471,15 @@ const PersonelDetailScreen = ({ navigation, route }) => {
                 }`,
               })
             }
-            style={styles.timesheetButton}
+            activeOpacity={0.7}
           >
-            Mesailer
-          </Button>
-          <Button
-            appearance="outline"
-            status="success"
+            <View style={[styles.actionIconContainer]}>
+              <Ionicons name="time-outline" size={20} color="#FF9800" />
+            </View>
+            <Text style={[styles.actionButtonText, { color: "#FF9800" }]}>Mesailer</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.leavesButton]}
             onPress={() =>
               navigation.navigate("EmployeeLeaves", {
                 employeeId: personelId,
@@ -382,19 +488,26 @@ const PersonelDetailScreen = ({ navigation, route }) => {
                 }`,
               })
             }
-            style={styles.leavesButton}
+            activeOpacity={0.7}
           >
-            İzinler
-          </Button>
-          <Button
-            appearance="outline"
-            status="danger"
+            <View style={[styles.actionIconContainer]}>
+              <Ionicons name="calendar-outline" size={20} color="#4CAF50" />
+            </View>
+            <Text style={[styles.actionButtonText, { color: "#4CAF50" }]}>İzinler</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
             onPress={handleDelete}
             disabled={isLoading}
-            style={styles.deleteButton}
+            activeOpacity={0.7}
           >
-            {isLoading ? "Siliniyor..." : "Sil"}
-          </Button>
+            <View style={[styles.actionIconContainer]}>
+              <Ionicons name="trash-outline" size={20} color="#F44336" />
+            </View>
+            <Text style={[styles.actionButtonText, { color: "#F44336" }]}>
+              {isLoading ? "Siliniyor..." : "Sil"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </Layout>
     </SafeAreaView>
@@ -407,68 +520,195 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+  },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    flex: 1,
+    paddingLeft: 16,
+
   },
   scrollView: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   headerCard: {
     marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    paddingVertical: 12,
   },
   headerContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
   avatar: {
     marginRight: 16,
+    width: 64,
+    height: 64,
+  },
+  customAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  initialText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1A2138",
   },
   headerInfo: {
     flex: 1,
+    marginRight: 12,
+  },
+  headerRoleContainer: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  headerRoleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  headerRoleText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   name: {
-    marginBottom: 4,
+    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "#F5F5F5",
+    marginBottom: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   position: {
-    marginBottom: 2,
+    marginBottom: 4,
     color: "#666",
+    fontSize: 14,
   },
   department: {
     color: "#999",
+    fontSize: 12,
   },
   infoCard: {
     marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sectionIcon: {
+    marginRight: 8,
   },
   sectionTitle: {
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "600",
   },
   divider: {
     marginBottom: 16,
+    marginTop: 4,
   },
   infoRow: {
     flexDirection: "row",
-    marginBottom: 12,
-    alignItems: "flex-start",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  infoLabelContainer: {
+  infoLeft: {
     flexDirection: "row",
     alignItems: "center",
-    minWidth: 120,
+    flex: 1,
   },
-  infoIcon: {
-    marginRight: 8,
+  infoIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   infoLabel: {
     color: "#666",
-    fontWeight: "600",
+    fontWeight: "500",
+    fontSize: 13,
   },
   infoValue: {
     flex: 1,
     color: "#333",
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "400",
+  },
+  roleContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  roleText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  emptyUserState: {
+    alignItems: "center",
+    paddingVertical: 24,
   },
   noUserText: {
     textAlign: "center",
     color: "#666",
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 16,
+    fontSize: 13,
   },
   createUserButton: {
     marginTop: 8,
@@ -484,20 +724,50 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
+    paddingHorizontal: 16,
     paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: "#FFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  actionIconContainer: {
+    width: 40,
+    height: 20,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   editButton: {
-    flex: 1,
+    borderColor: "#2196F3",
   },
   timesheetButton: {
-    flex: 1,
+    borderColor: "#FF9800",
   },
   leavesButton: {
-    flex: 1,
+    borderColor: "#4CAF50",
   },
   deleteButton: {
-    flex: 1,
+    borderColor: "#F44336",
+  },
+  actionButtonText: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
   },
 });
 

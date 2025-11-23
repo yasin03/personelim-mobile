@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, Alert } from "react-native";
+import { StyleSheet, View, Alert, Image } from "react-native";
 import { Layout, Text, Input, Button, Card } from "@ui-kitten/components";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,6 +62,7 @@ const RegisterScreen = ({ navigation }) => {
   return (
     <Layout style={styles.container}>
       <View style={styles.content}>
+      <Image source={require("../../assets/logo.jpg")} style={styles.logo} />
         <Text category="h1" style={styles.title}>
           Kayıt Ol
         </Text>
@@ -69,7 +70,6 @@ const RegisterScreen = ({ navigation }) => {
           Yeni hesap oluşturun
         </Text>
 
-        <Card style={styles.card}>
           <Controller
             control={control}
             name="name"
@@ -177,7 +177,6 @@ const RegisterScreen = ({ navigation }) => {
           >
             Zaten hesabınız var mı? Giriş yapın
           </Button>
-        </Card>
       </View>
     </Layout>
   );
@@ -192,6 +191,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
   },
+  logo: {
+    width: 80,
+    height: 80,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
   title: {
     textAlign: "center",
     marginBottom: 8,
@@ -200,9 +205,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 32,
     opacity: 0.7,
-  },
-  card: {
-    marginHorizontal: 4,
   },
   input: {
     marginBottom: 16,

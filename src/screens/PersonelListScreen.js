@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { StyleSheet, View, FlatList, RefreshControl } from "react-native";
+import { StyleSheet, View, FlatList, RefreshControl, TouchableOpacity } from "react-native";
 import {
   Layout,
   Text,
@@ -12,6 +12,7 @@ import {
   Avatar,
 } from "@ui-kitten/components";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, CommonActions } from "@react-navigation/native";
 import usePersonelStore from "../store/personelStore";
 
@@ -24,6 +25,22 @@ const avatarColors = [
   "#FECACA", // kırmızımsı
   "#C7D2FE", // indigo
 ];
+
+// Personel ID'sine veya ismine göre sabit renk döndürür
+const getAvatarColor = (personel) => {
+  // Önce ID'yi dene, yoksa ismi kullan
+  const identifier = personel.id || personel._id || `${personel.firstName}${personel.lastName}` || "default";
+  
+  // String'i sayıya çevir (basit hash)
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  // Hash'i pozitif sayıya çevir ve renk dizisinin index'ini al
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+};
 
 const PersonelListScreen = ({ navigation }) => {
   const { personelList, isLoading, fetchPersonelList, setCurrentPageName } = usePersonelStore();
@@ -73,8 +90,7 @@ const PersonelListScreen = ({ navigation }) => {
     const position = item.position || "Pozisyon belirtilmemiş";
     const department = item.department || "Departman belirtilmemiş";
 
-    const bgColor =
-      avatarColors[Math.floor(Math.random() * avatarColors.length)];
+    const bgColor = getAvatarColor(item);
 
     // Profil resmi varsa Avatar göster, yoksa harfli kutu
     const AvatarComponent = item.profilePictureUrl ? (
@@ -106,27 +122,17 @@ const PersonelListScreen = ({ navigation }) => {
       <Layout style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text category="h4" style={styles.title}>
+          <Text category="h5" style={styles.title}>
             Personel Listesi
           </Text>
-          <View style={styles.headerActions}>
-            <Button
-              size="small"
-              appearance="outline"
-              status="basic"
-              style={styles.headerButton}
-              onPress={() => navigation.navigate("ArchivedPersonel")}
-            >
-              Arşiv
-            </Button>
-            <Button
-              size="small"
-              style={styles.headerButton}
-              onPress={() => navigation.navigate("AddPersonel", { mode: "create" })}
-            >
-              + Ekle
-            </Button>
-          </View>
+          <TouchableOpacity
+            style={styles.archiveButton}
+            onPress={() => navigation.navigate("ArchivedPersonel")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="archive-outline" size={20} color="#2196F3" />
+            <Text style={styles.archiveButtonText}>Arşiv</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search */}
@@ -202,6 +208,15 @@ const PersonelListScreen = ({ navigation }) => {
           )}
         </View>
       </Layout>
+      
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("AddPersonel", { mode: "create" })}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={28} color="#FFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -219,16 +234,42 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   title: {
+    fontSize: 20,
+    fontWeight: "600",
     flex: 1,
   },
-  headerActions: {
+  archiveButton: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#E3F2FD",
+    gap: 6,
   },
-  headerButton: {
-    minWidth: 80,
+  archiveButtonText: {
+    fontSize: 14,
+    color: "#2196F3",
+    fontWeight: "500",
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   searchInput: {
     marginBottom: 16,
